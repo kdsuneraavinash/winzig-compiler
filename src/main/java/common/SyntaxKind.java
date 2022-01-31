@@ -76,7 +76,7 @@ public enum SyntaxKind {
     TYPES("types"),
     TYPE("type"),
     LIT("lit"),
-    SUB_PROGS("subprogs"),
+    SUBPROGS("subprogs"),
     FCN("fcn"),
     PARAMS("params"),
     DCLNS("dclns"),
