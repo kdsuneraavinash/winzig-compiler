@@ -1,5 +1,6 @@
 package parser;
 
+import common.nodes.ASTNode;
 import lexer.AbstractLexer;
 
 public abstract class AbstractParser {
@@ -9,5 +10,5 @@ public abstract class AbstractParser {
         this.tokenReader = new TokenReader(lexer);
     }
 
-    public abstract Node parse();
+    public abstract ASTNode parse();
 }

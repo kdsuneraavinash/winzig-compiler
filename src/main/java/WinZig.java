@@ -1,6 +1,8 @@
+import common.nodes.ASTNode;
+import common.nodes.IdentifierNode;
+import common.nodes.Node;
 import lexer.CharReader;
 import lexer.WinZigLexer;
-import parser.Node;
 import parser.WinZigParser;
 import picocli.CommandLine;
 
@@ -20,15 +22,20 @@ public class WinZig implements Callable<Integer> {
         CharReader charReader = CharReader.from(sourceCode);
         WinZigLexer lexer = new WinZigLexer(charReader);
         WinZigParser parser = new WinZigParser(lexer);
-        Node node = parser.parse();
+        ASTNode node = parser.parse();
         printTree(node, 0);
         return 0;
     }
 
-    public static void printTree(Node node, int depth) {
-        System.out.println("....".repeat(depth) + node.toString());
+    public static void printTree(ASTNode node, int depth) {
+        System.out.println(". ".repeat(depth) + node.toString());
         for (Node child : node.getChildren()) {
-            printTree(child, depth + 1);
+            if (child instanceof ASTNode) {
+                printTree((ASTNode) child, depth + 1);
+            } else if (child instanceof IdentifierNode) {
+                System.out.println(". ".repeat(depth + 1) + child);
+                System.out.println(". ".repeat(depth + 2) + ((IdentifierNode) child).getChild());
+            }
         }
     }
 

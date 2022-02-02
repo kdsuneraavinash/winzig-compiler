@@ -107,8 +107,34 @@ public enum SyntaxKind {
 
     TRUE("true"),
 
+    LT_EQUAL_EXPRESSION("<="),
+    LT_EXPRESSION("<"),
+    GT_EQUAL_EXPRESSION(">="),
+    GT_EXPRESSION(">"),
+    EQUALS_EXPRESSION("="),
+    NOT_EQUALS_EXPRESSION("<>"),
+
+
+    ADD_EXPRESSION("+"),
+    SUBTRACT_EXPRESSION("-"),
+    OR_EXPRESSION("or"),
+
+    MULTIPLY_EXPRESSION("*"),
+    DIVIDE_EXPRESSION("/"),
+    AND_EXPRESSION("and"),
+    MOD_EXPRESSION("mod"),
+
     NEGATIVE_EXPRESSION("-"),
-    ;
+    NOT_EXPRESSION("not"),
+    EOF_EXPRESSION("eof"),
+    CALL_EXPRESSION("call"),
+    SUCC_EXPRESSION("succ"),
+    PRED_EXPRESSION("pred"),
+    CHR_EXPRESSION("chr"),
+    ORD_EXPRESSION("ord"),
+
+
+    IDENTIFIER_EXPRESSION("<identifier>"),;
 
     private final String value;
 
