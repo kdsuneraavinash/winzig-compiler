@@ -1,14 +1,12 @@
 package lexer.tokens;
 
-import common.SyntaxKind;
-
 import java.util.List;
 
 public class IdentifierToken extends SyntaxToken {
     private final String value;
 
     public IdentifierToken(String value, List<MinutiaeToken> leading, List<MinutiaeToken> trailing) {
-        super(SyntaxKind.IDENTIFIER, leading, trailing);
+        super(TokenKind.IDENTIFIER, leading, trailing);
         this.value = value;
     }
 

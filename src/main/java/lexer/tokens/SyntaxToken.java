@@ -1,21 +1,19 @@
 package lexer.tokens;
 
-import common.SyntaxKind;
-
 import java.util.List;
 
 public class SyntaxToken {
-    protected final SyntaxKind kind;
+    protected final TokenKind kind;
     protected final List<MinutiaeToken> leading;
     protected final List<MinutiaeToken> trailing;
 
-    public SyntaxToken(SyntaxKind kind, List<MinutiaeToken> leading, List<MinutiaeToken> trailing) {
+    public SyntaxToken(TokenKind kind, List<MinutiaeToken> leading, List<MinutiaeToken> trailing) {
         this.kind = kind;
         this.leading = leading;
         this.trailing = trailing;
     }
 
-    public SyntaxKind getKind() {
+    public TokenKind getKind() {
         return kind;
     }
 

@@ -1,6 +1,6 @@
-import common.nodes.ASTNode;
-import common.nodes.IdentifierNode;
-import common.nodes.Node;
+import parser.nodes.ASTNode;
+import parser.nodes.IdentifierNode;
+import parser.nodes.Node;
 import lexer.CharReader;
 import lexer.WinZigLexer;
 import parser.WinZigParser;

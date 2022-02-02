@@ -1,15 +1,14 @@
-package common.nodes;
-
-import common.SyntaxKind;
+package parser.nodes;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class ASTNode extends Node {
+public class ASTNode implements Node {
+    private final NodeKind kind;
     private final List<Node> children;
 
-    public ASTNode(SyntaxKind kind) {
-        super(kind);
+    public ASTNode(NodeKind kind) {
+        this.kind = kind;
         this.children = new ArrayList<>();
     }
 
@@ -23,6 +22,6 @@ public class ASTNode extends Node {
 
     @Override
     public String toString() {
-        return String.format("%s(%s)", value, children.size());
+        return String.format("%s(%s)", kind.getValue(), children.size());
     }
 }

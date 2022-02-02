@@ -1,6 +1,6 @@
 package parser;
 
-import common.nodes.ASTNode;
+import parser.nodes.ASTNode;
 import lexer.AbstractLexer;
 
 public abstract class AbstractParser {

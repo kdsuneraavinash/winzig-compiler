@@ -1,12 +1,10 @@
 package lexer.tokens;
 
-import common.SyntaxKind;
-
 public class MinutiaeToken {
-    private final SyntaxKind kind;
+    private final TokenKind kind;
     private final String content;
 
-    public MinutiaeToken(SyntaxKind kind, String content) {
+    public MinutiaeToken(TokenKind kind, String content) {
         this.kind = kind;
         this.content = content;
     }

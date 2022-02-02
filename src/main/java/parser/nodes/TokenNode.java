@@ -1,18 +1,18 @@
-package common.nodes;
+package parser.nodes;
 
-import common.SyntaxKind;
 import lexer.tokens.SyntaxToken;
+import lexer.tokens.TokenKind;
 
-public class Node {
-    protected final SyntaxKind kind;
+public class TokenNode implements Node {
+    protected final TokenKind kind;
     protected final String value;
 
-    public Node(SyntaxToken token) {
+    public TokenNode(SyntaxToken token) {
         this.kind = token.getKind();
         this.value = token.getValue();
     }
 
-    protected Node(SyntaxKind kind) {
+    protected TokenNode(TokenKind kind) {
         this.kind = kind;
         this.value = kind.getValue();
     }

@@ -1,13 +1,11 @@
 package lexer.tokens;
 
-import common.SyntaxKind;
-
 import java.util.List;
 
 public class LiteralToken extends SyntaxToken {
     private final String value;
 
-    public LiteralToken(SyntaxKind kind, String value, List<MinutiaeToken> leading, List<MinutiaeToken> trailing) {
+    public LiteralToken(TokenKind kind, String value, List<MinutiaeToken> leading, List<MinutiaeToken> trailing) {
         super(kind, leading, trailing);
         this.value = value;
     }
