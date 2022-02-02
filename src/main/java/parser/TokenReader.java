@@ -13,15 +13,6 @@ public class TokenReader {
         this.fetchedTokens = new CircularBuffer<>(10);
     }
 
-    public Token peek() {
-        if (fetchedTokens.getSize() > 0) {
-            return fetchedTokens.peek();
-        }
-        Token nextToken = lexer.read();
-        fetchedTokens.add(nextToken);
-        return nextToken;
-    }
-
     public Token peek(int k) {
         while (fetchedTokens.getSize() <= k) {
             Token nextToken = lexer.read();

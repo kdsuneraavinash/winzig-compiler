@@ -1,22 +1,14 @@
 package parser;
 
 import lexer.WinZigLexer;
-import lexer.tokens.Token;
 import lexer.tokens.TokenKind;
 import parser.nodes.ASTNode;
-import parser.nodes.IdentifierNode;
 import parser.nodes.Node;
 import parser.nodes.NodeKind;
 
-import java.util.Stack;
-import java.util.function.Supplier;
-
 public class WinZigParser extends AbstractParser {
-    private final Stack<Node> nodeStack;
-
     public WinZigParser(WinZigLexer lexer) {
         super(lexer);
-        this.nodeStack = new Stack<>();
     }
 
     @Override
@@ -50,7 +42,8 @@ public class WinZigParser extends AbstractParser {
 
     private int parseConsts() {
         int itemCount = 0;
-        if (nextTokenIs(TokenKind.CONST_KEYWORD)) {
+        TokenKind tokenKind = peekNextKind();
+        if (tokenKind == TokenKind.CONST_KEYWORD) {
             itemCount += parseToken(TokenKind.CONST_KEYWORD);
             itemCount += parseList(this::parseConst, TokenKind.COMMA_TOKEN);
             itemCount += parseToken(TokenKind.SEMICOLON_TOKEN);
@@ -67,9 +60,10 @@ public class WinZigParser extends AbstractParser {
     }
 
     private int parseConstValue() {
-        if (nextTokenIs(TokenKind.INTEGER_LITERAL)) {
+        TokenKind tokenKind = peekNextKind();
+        if (tokenKind == TokenKind.INTEGER_LITERAL) {
             return parseIdentifier(TokenKind.INTEGER_LITERAL);
-        } else if (nextTokenIs(TokenKind.CHAR_LITERAL)) {
+        } else if (tokenKind == TokenKind.CHAR_LITERAL) {
             return parseIdentifier(TokenKind.CHAR_LITERAL);
         } else {
             return parseName();
@@ -78,15 +72,20 @@ public class WinZigParser extends AbstractParser {
 
     private int parseTypes() {
         int itemCount = 0;
-        if (nextTokenIs(TokenKind.TYPE_KEYWORD)) {
+        TokenKind tokenKind = peekNextKind();
+        if (tokenKind == TokenKind.TYPE_KEYWORD) {
             itemCount += parseToken(TokenKind.TYPE_KEYWORD);
             itemCount += parseType();
             itemCount += parseToken(TokenKind.SEMICOLON_TOKEN);
             // After types is always Dclns(nullable), SubProgs(nullable) and Body.
             // So must be followed by 'var', 'function' or 'begin' at the end.
-            while (!nextTokenIs(TokenKind.VAR_KEYWORD, TokenKind.FUNCTION_KEYWORD, TokenKind.BEGIN_KEYWORD)) {
+            tokenKind = peekNextKind();
+            while (tokenKind != TokenKind.VAR_KEYWORD
+                    && tokenKind != TokenKind.FUNCTION_KEYWORD
+                    && tokenKind != TokenKind.BEGIN_KEYWORD) {
                 itemCount += parseType();
                 itemCount += parseToken(TokenKind.SEMICOLON_TOKEN);
+                tokenKind = peekNextKind();
             }
         }
         return buildTree(NodeKind.TYPES, itemCount);
@@ -110,8 +109,10 @@ public class WinZigParser extends AbstractParser {
 
     private int parseSubProgs() {
         int itemCount = 0;
-        while (nextTokenIs(TokenKind.FUNCTION_KEYWORD)) {
+        TokenKind tokenKind = peekNextKind();
+        while (tokenKind == TokenKind.FUNCTION_KEYWORD) {
             itemCount += parseFcn();
+            tokenKind = peekNextKind();
         }
         return buildTree(NodeKind.SUBPROGS, itemCount);
     }
@@ -143,15 +144,19 @@ public class WinZigParser extends AbstractParser {
 
     private int parseDclns() {
         int itemCount = 0;
-        if (nextTokenIs(TokenKind.VAR_KEYWORD)) {
+        TokenKind tokenKind = peekNextKind();
+        if (tokenKind == TokenKind.VAR_KEYWORD) {
             itemCount += parseToken(TokenKind.VAR_KEYWORD);
             itemCount += parseDcln();
             itemCount += parseToken(TokenKind.SEMICOLON_TOKEN);
             // Dclns is followed by SubProgs(nullable) and Body.
             // So must be followed by 'function' or 'begin' at the end.
-            while (!nextTokenIs(TokenKind.FUNCTION_KEYWORD, TokenKind.BEGIN_KEYWORD)) {
+            tokenKind = peekNextKind();
+            while (tokenKind != TokenKind.FUNCTION_KEYWORD
+                    && tokenKind != TokenKind.BEGIN_KEYWORD) {
                 itemCount += parseDcln();
                 itemCount += parseToken(TokenKind.SEMICOLON_TOKEN);
+                tokenKind = peekNextKind();
             }
         }
         return buildTree(NodeKind.DCLNS, itemCount);
@@ -199,7 +204,7 @@ public class WinZigParser extends AbstractParser {
             return parseBody();
         } else {
             // The second token of assignment is either ':=' or ':=:'.
-            TokenKind peekKind = peekNextNextKind();
+            TokenKind peekKind = peekNextKind(1);
             if (peekKind == TokenKind.ASSIGNMENT_TOKEN || peekKind == TokenKind.SWAP_TOKEN) {
                 return parseAssignmentStatement();
             } else {
@@ -223,7 +228,8 @@ public class WinZigParser extends AbstractParser {
         itemCount += parseExpression();
         itemCount += parseToken(TokenKind.THEN_KEYWORD);
         itemCount += parseStatement();
-        if (nextTokenIs(TokenKind.ELSE_KEYWORD)) {
+        TokenKind tokenKind = peekNextKind();
+        if (tokenKind == TokenKind.ELSE_KEYWORD) {
             itemCount += parseToken(TokenKind.ELSE_KEYWORD);
             itemCount += parseStatement();
         }
@@ -305,7 +311,8 @@ public class WinZigParser extends AbstractParser {
 
     private int parseOutExp() {
         int itemCount = 0;
-        if (nextTokenIs(TokenKind.STRING_LITERAL)) {
+        TokenKind tokenKind = peekNextKind();
+        if (tokenKind == TokenKind.STRING_LITERAL) {
             itemCount += parseStringNode();
             return buildTree(NodeKind.STRING_OUT_EXP, itemCount);
         } else {
@@ -324,9 +331,12 @@ public class WinZigParser extends AbstractParser {
         itemCount += parseToken(TokenKind.SEMICOLON_TOKEN);
         // Case clauses must be followed by otherwise(nullable) or 'end'.
         // So must be followed bt 'otherwise' or 'end'.
-        while (!nextTokenIs(TokenKind.OTHERWISE_KEYWORD, TokenKind.END_KEYWORD)) {
+        TokenKind tokenKind = peekNextKind();
+        while (tokenKind != TokenKind.OTHERWISE_KEYWORD
+                && tokenKind != TokenKind.END_KEYWORD) {
             itemCount += parseCaseClause();
             itemCount += parseToken(TokenKind.SEMICOLON_TOKEN);
+            tokenKind = peekNextKind();
         }
         return itemCount;
     }
@@ -342,7 +352,8 @@ public class WinZigParser extends AbstractParser {
     private int parseCaseExpression() {
         int itemCount = 0;
         itemCount += parseConstValue();
-        if (nextTokenIs(TokenKind.DOUBLE_DOTS_TOKEN)) {
+        TokenKind tokenKind = peekNextKind();
+        if (tokenKind == TokenKind.DOUBLE_DOTS_TOKEN) {
             itemCount += parseToken(TokenKind.DOUBLE_DOTS_TOKEN);
             itemCount += parseConstValue();
             return buildTree(NodeKind.DOUBLE_DOTS_CLAUSE, itemCount);
@@ -352,7 +363,8 @@ public class WinZigParser extends AbstractParser {
 
     private int parseOtherwiseClause() {
         int itemCount = 0;
-        if (nextTokenIs(TokenKind.OTHERWISE_KEYWORD)) {
+        TokenKind tokenKind = peekNextKind();
+        if (tokenKind == TokenKind.OTHERWISE_KEYWORD) {
             itemCount += parseToken(TokenKind.OTHERWISE_KEYWORD);
             itemCount += parseStatement();
             return buildTree(NodeKind.OTHERWISE_CLAUSE, itemCount);
@@ -363,7 +375,8 @@ public class WinZigParser extends AbstractParser {
     private int parseAssignmentStatement() {
         int itemCount = 0;
         itemCount += parseName();
-        if (nextTokenIs(TokenKind.ASSIGNMENT_TOKEN)) {
+        TokenKind tokenKind = peekNextKind();
+        if (tokenKind == TokenKind.ASSIGNMENT_TOKEN) {
             itemCount += parseToken(TokenKind.ASSIGNMENT_TOKEN);
             itemCount += parseExpression();
             return buildTree(NodeKind.ASSIGNMENT_STATEMENT, itemCount);
@@ -376,7 +389,8 @@ public class WinZigParser extends AbstractParser {
 
     private int parseForStat() {
         // ForStat is always followed by ';'.
-        if (nextTokenIs(TokenKind.SEMICOLON_TOKEN)) {
+        TokenKind tokenKind = peekNextKind();
+        if (tokenKind == TokenKind.SEMICOLON_TOKEN) {
             return buildTree(NodeKind.NULL_STATEMENT, 0);
         } else {
             return parseAssignmentStatement();
@@ -385,7 +399,8 @@ public class WinZigParser extends AbstractParser {
 
     private int parseForExp() {
         // ForStat is always followed by ';'.
-        if (nextTokenIs(TokenKind.SEMICOLON_TOKEN)) {
+        TokenKind tokenKind = peekNextKind();
+        if (tokenKind == TokenKind.SEMICOLON_TOKEN) {
             return buildTree(NodeKind.TRUE, 0);
         } else {
             return parseExpression();
@@ -427,9 +442,10 @@ public class WinZigParser extends AbstractParser {
     private int parseTerm() {
         int itemCount = 0;
         itemCount += parseFactor();
-        while (nextTokenIs(TokenKind.PLUS_TOKEN,
-                TokenKind.MINUS_TOKEN, TokenKind.OR_KEYWORD)) {
-            TokenKind tokenKind = peekNextKind();
+        TokenKind tokenKind = peekNextKind();
+        while (tokenKind == TokenKind.PLUS_TOKEN
+                || tokenKind == TokenKind.MINUS_TOKEN
+                || tokenKind == TokenKind.OR_KEYWORD) {
             if (tokenKind == TokenKind.PLUS_TOKEN) {
                 itemCount += parseToken(TokenKind.PLUS_TOKEN);
                 itemCount += parseFactor();
@@ -438,11 +454,12 @@ public class WinZigParser extends AbstractParser {
                 itemCount += parseToken(TokenKind.MINUS_TOKEN);
                 itemCount += parseFactor();
                 itemCount = buildTree(NodeKind.SUBTRACT_EXPRESSION, itemCount);
-            } else if (tokenKind == TokenKind.OR_KEYWORD) {
+            } else {
                 itemCount += parseToken(TokenKind.OR_KEYWORD);
                 itemCount += parseFactor();
                 itemCount = buildTree(NodeKind.OR_EXPRESSION, itemCount);
             }
+            tokenKind = peekNextKind();
         }
         return itemCount;
     }
@@ -450,9 +467,11 @@ public class WinZigParser extends AbstractParser {
     private int parseFactor() {
         int itemCount = 0;
         itemCount += parsePrimary();
-        while (nextTokenIs(TokenKind.MULTIPLY_TOKEN, TokenKind.DIVIDE_TOKEN,
-                TokenKind.AND_KEYWORD, TokenKind.MOD_KEYWORD)) {
-            TokenKind tokenKind = peekNextKind();
+        TokenKind tokenKind = peekNextKind();
+        while (tokenKind == TokenKind.MULTIPLY_TOKEN
+                || tokenKind == TokenKind.DIVIDE_TOKEN
+                || tokenKind == TokenKind.AND_KEYWORD
+                || tokenKind == TokenKind.MOD_KEYWORD) {
             if (tokenKind == TokenKind.MULTIPLY_TOKEN) {
                 itemCount += parseToken(TokenKind.MULTIPLY_TOKEN);
                 itemCount += parsePrimary();
@@ -465,11 +484,12 @@ public class WinZigParser extends AbstractParser {
                 itemCount += parseToken(TokenKind.AND_KEYWORD);
                 itemCount += parsePrimary();
                 itemCount = buildTree(NodeKind.AND_EXPRESSION, itemCount);
-            } else if (tokenKind == TokenKind.MOD_KEYWORD) {
+            } else {
                 itemCount += parseToken(TokenKind.MOD_KEYWORD);
                 itemCount += parsePrimary();
                 itemCount = buildTree(NodeKind.MOD_EXPRESSION, itemCount);
             }
+            tokenKind = peekNextKind();
         }
         return itemCount;
     }
@@ -503,7 +523,7 @@ public class WinZigParser extends AbstractParser {
         } else if (tokenKind == TokenKind.ORD_KEYWORD) {
             itemCount += parseOrdExpression();
         } else {
-            TokenKind nextNextKind = peekNextNextKind();
+            TokenKind nextNextKind = peekNextKind(1);
             // Is this correct?
             if (nextNextKind == TokenKind.OPEN_BRACKET_TOKEN) {
                 itemCount += parseCallExpression();
@@ -584,70 +604,4 @@ public class WinZigParser extends AbstractParser {
         return 1;
     }
 
-    private int parseIdentifier(TokenKind kind) {
-        if (nextTokenIs(kind)) {
-            Token nextToken = tokenReader.read();
-            nodeStack.push(new IdentifierNode(nextToken));
-            return 1;
-        } else {
-            TokenKind foundKind = peekNextKind();
-            String message = String.format("Expected %s[%s] but found %s[%s]",
-                    kind, kind.getValue(), foundKind, foundKind.getValue());
-            throw new IllegalStateException(message);
-        }
-    }
-
-    private int parseToken(TokenKind kind) {
-        if (nextTokenIs(kind)) {
-            tokenReader.read();
-            return 0;
-        } else {
-            TokenKind foundKind = peekNextKind();
-            String message = String.format("Expected %s[%s] but found %s[%s]",
-                    kind, kind.getValue(), foundKind, foundKind.getValue());
-            throw new IllegalStateException(message);
-        }
-    }
-
-    private int parseList(Supplier<Integer> parser, TokenKind seperator) {
-        int itemCount = 0;
-        itemCount += parser.get();
-        while (nextTokenIs(seperator)) {
-            itemCount += parseToken(seperator);
-            itemCount += parser.get();
-        }
-        return itemCount;
-    }
-
-    private int buildTree(NodeKind kind, int childrenCount) {
-        Stack<Node> children = new Stack<>();
-        for (int i = 0; i < childrenCount; i++) {
-            children.push(nodeStack.pop());
-        }
-        ASTNode node = new ASTNode(kind);
-        for (int i = 0; i < childrenCount; i++) {
-            node.addChild(children.pop());
-        }
-        nodeStack.push(node);
-        return 1;
-    }
-
-
-    private boolean nextTokenIs(TokenKind... kinds) {
-        TokenKind nextKind = peekNextKind();
-        for (TokenKind kind : kinds) {
-            if (kind.equals(nextKind)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private TokenKind peekNextNextKind() {
-        return tokenReader.peek(1).getKind();
-    }
-
-    private TokenKind peekNextKind() {
-        return tokenReader.peek().getKind();
-    }
 }
