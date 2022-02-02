@@ -67,9 +67,9 @@ public class WinZigParser extends AbstractParser {
 
     private int parseConstValue() {
         if (nextTokenIs(SyntaxKind.INTEGER_LITERAL)) {
-            return parseToken(SyntaxKind.INTEGER_LITERAL);
+            return parseIdentifier(SyntaxKind.INTEGER_LITERAL);
         } else if (nextTokenIs(SyntaxKind.CHAR_LITERAL)) {
-            return parseToken(SyntaxKind.CHAR_LITERAL);
+            return parseIdentifier(SyntaxKind.CHAR_LITERAL);
         } else {
             return parseName();
         }
@@ -314,7 +314,7 @@ public class WinZigParser extends AbstractParser {
     }
 
     private int parseStringNode() {
-        return parseToken(SyntaxKind.STRING_LITERAL);
+        return parseIdentifier(SyntaxKind.STRING_LITERAL);
     }
 
     private int parseCaseClauses() {
@@ -483,12 +483,12 @@ public class WinZigParser extends AbstractParser {
             itemCount += parsePrimary();
         } else if (syntaxKind == SyntaxKind.NOT_KEYWORD) {
             itemCount += parseNotExpression();
-        } else if (syntaxKind == SyntaxKind.EOF_TOKEN) {
+        } else if (syntaxKind == SyntaxKind.EOF_KEYWORD) {
             itemCount += parseEofExpression();
         } else if (syntaxKind == SyntaxKind.INTEGER_LITERAL) {
-            itemCount += parseToken(SyntaxKind.INTEGER_LITERAL);
+            itemCount += parseIdentifier(SyntaxKind.INTEGER_LITERAL);
         } else if (syntaxKind == SyntaxKind.CHAR_LITERAL) {
-            itemCount += parseToken(SyntaxKind.CHAR_LITERAL);
+            itemCount += parseIdentifier(SyntaxKind.CHAR_LITERAL);
         } else if (syntaxKind == SyntaxKind.OPEN_BRACKET_TOKEN) {
             itemCount += parseToken(SyntaxKind.OPEN_BRACKET_TOKEN);
             itemCount += parseExpression();
@@ -507,7 +507,7 @@ public class WinZigParser extends AbstractParser {
             if (nextNextKind == SyntaxKind.OPEN_BRACKET_TOKEN) {
                 itemCount += parseCallExpression();
             } else {
-                itemCount += parseToken(SyntaxKind.IDENTIFIER);
+                itemCount += parseIdentifier(SyntaxKind.IDENTIFIER);
             }
         }
         return itemCount;
@@ -579,16 +579,27 @@ public class WinZigParser extends AbstractParser {
     }
 
     private int parseName() {
-        parseToken(SyntaxKind.IDENTIFIER);
-        nodeStack.push(new IdentifierNode(nodeStack.pop()));
+        parseIdentifier(SyntaxKind.IDENTIFIER);
         return 1;
+    }
+
+    private int parseIdentifier(SyntaxKind kind) {
+        if (nextTokenIs(kind)) {
+            SyntaxToken nextToken = tokenReader.read();
+            nodeStack.push(new IdentifierNode(kind, new Node(nextToken)));
+            return 1;
+        } else {
+            SyntaxKind foundKind = peekKind(0);
+            String message = String.format("Expected %s[%s] but found %s[%s]",
+                    kind, kind.getValue(), foundKind, foundKind.getValue());
+            throw new IllegalStateException(message);
+        }
     }
 
     private int parseToken(SyntaxKind kind) {
         if (nextTokenIs(kind)) {
-            SyntaxToken token = tokenReader.read();
-            nodeStack.push(new Node(token));
-            return 1;
+            tokenReader.read();
+            return 0;
         } else {
             SyntaxKind foundKind = peekKind(0);
             String message = String.format("Expected %s[%s] but found %s[%s]",

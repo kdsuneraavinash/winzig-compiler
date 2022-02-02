@@ -5,8 +5,8 @@ import common.SyntaxKind;
 public class IdentifierNode extends Node {
     private final Node child;
 
-    public IdentifierNode(Node child) {
-        super(SyntaxKind.IDENTIFIER_EXPRESSION);
+    public IdentifierNode(SyntaxKind kind, Node child) {
+        super(kind);
         this.child = child;
     }
 

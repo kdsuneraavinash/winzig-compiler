@@ -59,10 +59,10 @@ public enum SyntaxKind {
     EOF_TOKEN,
 
     // Literals
-    INTEGER_LITERAL,
-    CHAR_LITERAL,
-    STRING_LITERAL,
-    IDENTIFIER,
+    INTEGER_LITERAL("<integer>"),
+    CHAR_LITERAL("<char>"),
+    STRING_LITERAL("<string>"),
+    IDENTIFIER("<identifier>"),
 
     // Minutiae
     WHITESPACE_MINUTIAE,
@@ -100,7 +100,7 @@ public enum SyntaxKind {
 
     CASE_CLAUSE("case_clause"),
     DOUBLE_DOTS_CLAUSE(".."),
-    OTHERWISE_CLAUSE(".."),
+    OTHERWISE_CLAUSE("otherwise"),
 
     ASSIGNMENT_STATEMENT("assign"),
     SWAP_STATEMENT("swap"),
@@ -131,10 +131,7 @@ public enum SyntaxKind {
     SUCC_EXPRESSION("succ"),
     PRED_EXPRESSION("pred"),
     CHR_EXPRESSION("chr"),
-    ORD_EXPRESSION("ord"),
-
-
-    IDENTIFIER_EXPRESSION("<identifier>"),;
+    ORD_EXPRESSION("ord");
 
     private final String value;
 
