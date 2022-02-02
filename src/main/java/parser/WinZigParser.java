@@ -1,7 +1,7 @@
 package parser;
 
 import lexer.WinZigLexer;
-import lexer.tokens.SyntaxToken;
+import lexer.tokens.Token;
 import lexer.tokens.TokenKind;
 import parser.nodes.ASTNode;
 import parser.nodes.IdentifierNode;
@@ -174,7 +174,7 @@ public class WinZigParser extends AbstractParser {
     }
 
     private int parseStatement() {
-        TokenKind tokenKind = peekKind(0);
+        TokenKind tokenKind = peekNextKind();
         if (tokenKind == TokenKind.OUTPUT_KEYWORD) {
             return parseOutputStatement();
         } else if (tokenKind == TokenKind.IF_KEYWORD) {
@@ -199,7 +199,7 @@ public class WinZigParser extends AbstractParser {
             return parseBody();
         } else {
             // The second token of assignment is either ':=' or ':=:'.
-            TokenKind peekKind = peekKind(1);
+            TokenKind peekKind = peekNextNextKind();
             if (peekKind == TokenKind.ASSIGNMENT_TOKEN || peekKind == TokenKind.SWAP_TOKEN) {
                 return parseAssignmentStatement();
             } else {
@@ -395,7 +395,7 @@ public class WinZigParser extends AbstractParser {
     private int parseExpression() {
         int itemCount = 0;
         itemCount += parseTerm();
-        TokenKind tokenKind = peekKind(0);
+        TokenKind tokenKind = peekNextKind();
         if (tokenKind == TokenKind.LT_EQUAL_TOKEN) {
             itemCount += parseToken(TokenKind.LT_EQUAL_TOKEN);
             itemCount += parseTerm();
@@ -429,7 +429,7 @@ public class WinZigParser extends AbstractParser {
         itemCount += parseFactor();
         while (nextTokenIs(TokenKind.PLUS_TOKEN,
                 TokenKind.MINUS_TOKEN, TokenKind.OR_KEYWORD)) {
-            TokenKind tokenKind = peekKind(0);
+            TokenKind tokenKind = peekNextKind();
             if (tokenKind == TokenKind.PLUS_TOKEN) {
                 itemCount += parseToken(TokenKind.PLUS_TOKEN);
                 itemCount += parseFactor();
@@ -452,7 +452,7 @@ public class WinZigParser extends AbstractParser {
         itemCount += parsePrimary();
         while (nextTokenIs(TokenKind.MULTIPLY_TOKEN, TokenKind.DIVIDE_TOKEN,
                 TokenKind.AND_KEYWORD, TokenKind.MOD_KEYWORD)) {
-            TokenKind tokenKind = peekKind(0);
+            TokenKind tokenKind = peekNextKind();
             if (tokenKind == TokenKind.MULTIPLY_TOKEN) {
                 itemCount += parseToken(TokenKind.MULTIPLY_TOKEN);
                 itemCount += parsePrimary();
@@ -476,7 +476,7 @@ public class WinZigParser extends AbstractParser {
 
     private int parsePrimary() {
         int itemCount = 0;
-        TokenKind tokenKind = peekKind(0);
+        TokenKind tokenKind = peekNextKind();
         if (tokenKind == TokenKind.MINUS_TOKEN) {
             itemCount += parseNegativeExpression();
         } else if (tokenKind == TokenKind.PLUS_TOKEN) {
@@ -503,7 +503,7 @@ public class WinZigParser extends AbstractParser {
         } else if (tokenKind == TokenKind.ORD_KEYWORD) {
             itemCount += parseOrdExpression();
         } else {
-            TokenKind nextNextKind = peekKind(1);
+            TokenKind nextNextKind = peekNextNextKind();
             // Is this correct?
             if (nextNextKind == TokenKind.OPEN_BRACKET_TOKEN) {
                 itemCount += parseCallExpression();
@@ -586,11 +586,11 @@ public class WinZigParser extends AbstractParser {
 
     private int parseIdentifier(TokenKind kind) {
         if (nextTokenIs(kind)) {
-            SyntaxToken nextToken = tokenReader.read();
+            Token nextToken = tokenReader.read();
             nodeStack.push(new IdentifierNode(nextToken));
             return 1;
         } else {
-            TokenKind foundKind = peekKind(0);
+            TokenKind foundKind = peekNextKind();
             String message = String.format("Expected %s[%s] but found %s[%s]",
                     kind, kind.getValue(), foundKind, foundKind.getValue());
             throw new IllegalStateException(message);
@@ -602,7 +602,7 @@ public class WinZigParser extends AbstractParser {
             tokenReader.read();
             return 0;
         } else {
-            TokenKind foundKind = peekKind(0);
+            TokenKind foundKind = peekNextKind();
             String message = String.format("Expected %s[%s] but found %s[%s]",
                     kind, kind.getValue(), foundKind, foundKind.getValue());
             throw new IllegalStateException(message);
@@ -634,7 +634,7 @@ public class WinZigParser extends AbstractParser {
 
 
     private boolean nextTokenIs(TokenKind... kinds) {
-        TokenKind nextKind = peekKind(0);
+        TokenKind nextKind = peekNextKind();
         for (TokenKind kind : kinds) {
             if (kind.equals(nextKind)) {
                 return true;
@@ -643,7 +643,11 @@ public class WinZigParser extends AbstractParser {
         return false;
     }
 
-    private TokenKind peekKind(int skip) {
-        return tokenReader.peek(skip).getKind();
+    private TokenKind peekNextNextKind() {
+        return tokenReader.peek(1).getKind();
+    }
+
+    private TokenKind peekNextKind() {
+        return tokenReader.peek().getKind();
     }
 }

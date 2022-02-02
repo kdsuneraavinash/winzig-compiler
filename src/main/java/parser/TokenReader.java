@@ -1,37 +1,36 @@
 package parser;
 
 
-import common.CircularBuffer;
 import lexer.AbstractLexer;
-import lexer.tokens.SyntaxToken;
+import lexer.tokens.Token;
 
 public class TokenReader {
     private final AbstractLexer lexer;
-    private final CircularBuffer<SyntaxToken> fetchedTokens;
+    private final CircularBuffer<Token> fetchedTokens;
 
     public TokenReader(AbstractLexer lexer) {
         this.lexer = lexer;
         this.fetchedTokens = new CircularBuffer<>(10);
     }
 
-    public SyntaxToken peek() {
+    public Token peek() {
         if (fetchedTokens.getSize() > 0) {
             return fetchedTokens.peek();
         }
-        SyntaxToken nextToken = lexer.read();
+        Token nextToken = lexer.read();
         fetchedTokens.add(nextToken);
         return nextToken;
     }
 
-    public SyntaxToken peek(int k) {
+    public Token peek(int k) {
         while (fetchedTokens.getSize() <= k) {
-            SyntaxToken nextToken = lexer.read();
+            Token nextToken = lexer.read();
             fetchedTokens.add(nextToken);
         }
         return fetchedTokens.peek(k);
     }
 
-    public SyntaxToken read() {
+    public Token read() {
         if (fetchedTokens.getSize() > 0) {
             return fetchedTokens.remove();
         }

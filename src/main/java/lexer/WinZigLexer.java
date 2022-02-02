@@ -3,8 +3,8 @@ package lexer;
 import lexer.tokens.TokenKind;
 import lexer.tokens.IdentifierToken;
 import lexer.tokens.LiteralToken;
-import lexer.tokens.MinutiaeToken;
-import lexer.tokens.SyntaxToken;
+import lexer.tokens.Minutiae;
+import lexer.tokens.Token;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,7 +14,7 @@ public class WinZigLexer extends AbstractLexer {
         super(charReader);
     }
 
-    public SyntaxToken read() {
+    public Token read() {
         processLeadingMinutiae();
 
         charReader.startMarking();
@@ -85,7 +85,7 @@ public class WinZigLexer extends AbstractLexer {
      * -------------------------------
      */
 
-    private SyntaxToken processColon() {
+    private Token processColon() {
         char nextChar = charReader.peek();
         if (nextChar == LexerTerminals.EQUAL) {
             char nextNextChar = charReader.peek(1);
@@ -99,7 +99,7 @@ public class WinZigLexer extends AbstractLexer {
         return createToken(TokenKind.COLON_TOKEN);
     }
 
-    private SyntaxToken processDot() {
+    private Token processDot() {
         char nextChar = charReader.peek();
         if (nextChar == LexerTerminals.DOT) {
             charReader.advance();
@@ -108,7 +108,7 @@ public class WinZigLexer extends AbstractLexer {
         return createToken(TokenKind.SINGLE_DOT_TOKEN);
     }
 
-    private SyntaxToken processLt() {
+    private Token processLt() {
         char nextChar = charReader.peek();
         if (nextChar == LexerTerminals.EQUAL) {
             charReader.advance();
@@ -121,7 +121,7 @@ public class WinZigLexer extends AbstractLexer {
         return createToken(TokenKind.LT_TOKEN);
     }
 
-    private SyntaxToken processGt() {
+    private Token processGt() {
         char nextChar = charReader.peek();
         if (nextChar == LexerTerminals.EQUAL) {
             charReader.advance();
@@ -130,7 +130,7 @@ public class WinZigLexer extends AbstractLexer {
         return createToken(TokenKind.GT_TOKEN);
     }
 
-    private SyntaxToken processInteger() {
+    private Token processInteger() {
         while (!charReader.isEOF()) {
             char nextChar = charReader.peek();
             if (isDigit(nextChar)) {
@@ -142,7 +142,7 @@ public class WinZigLexer extends AbstractLexer {
         return createLiteralToken(TokenKind.INTEGER_LITERAL);
     }
 
-    private SyntaxToken processChar() {
+    private Token processChar() {
         char nextChar = charReader.peek();
         if (nextChar != LexerTerminals.QUOTE) {
             char nextNextChar = charReader.peek(1);
@@ -154,7 +154,7 @@ public class WinZigLexer extends AbstractLexer {
         throw new IllegalStateException();
     }
 
-    private SyntaxToken processString() {
+    private Token processString() {
         while (!charReader.isEOF()) {
             char nextChar = charReader.peek();
             charReader.advance();
@@ -165,7 +165,7 @@ public class WinZigLexer extends AbstractLexer {
         throw new IllegalStateException();
     }
 
-    private SyntaxToken processKeywordOrIdentifier() {
+    private Token processKeywordOrIdentifier() {
         while (!charReader.isEOF()) {
             char nextChar = charReader.peek();
             if (isIdentifierChar(nextChar)) {
@@ -257,13 +257,13 @@ public class WinZigLexer extends AbstractLexer {
         processSyntaxMinutiae(this.leadingMinutiae, true);
     }
 
-    private List<MinutiaeToken> processTrailingMinutiae() {
-        List<MinutiaeToken> minutiaeTokens = new ArrayList<>();
-        processSyntaxMinutiae(minutiaeTokens, false);
-        return minutiaeTokens;
+    private List<Minutiae> processTrailingMinutiae() {
+        List<Minutiae> minutiae = new ArrayList<>();
+        processSyntaxMinutiae(minutiae, false);
+        return minutiae;
     }
 
-    private void processSyntaxMinutiae(List<MinutiaeToken> minutiaeTokens, boolean isLeading) {
+    private void processSyntaxMinutiae(List<Minutiae> minutiae, boolean isLeading) {
         while (!charReader.isEOF()) {
             charReader.startMarking();
             char c = charReader.peek();
@@ -271,20 +271,20 @@ public class WinZigLexer extends AbstractLexer {
                 case LexerTerminals.SPACE:
                 case LexerTerminals.TAB:
                 case LexerTerminals.FORM_FEED:
-                    minutiaeTokens.add(processWhitespaceMinutiae());
+                    minutiae.add(processWhitespaceMinutiae());
                     break;
                 case LexerTerminals.CARRIAGE_RETURN:
                 case LexerTerminals.NEWLINE:
-                    minutiaeTokens.add(processEndOfLineMinutiae());
+                    minutiae.add(processEndOfLineMinutiae());
                     if (isLeading) {
                         break;
                     }
                     return;
                 case LexerTerminals.OPEN_BRACE:
-                    minutiaeTokens.add(processMultilineCommentMinutiae());
+                    minutiae.add(processMultilineCommentMinutiae());
                     break;
                 case LexerTerminals.HASH:
-                    minutiaeTokens.add(processCommentMinutiae());
+                    minutiae.add(processCommentMinutiae());
                     break;
                 default:
                     return;
@@ -292,7 +292,7 @@ public class WinZigLexer extends AbstractLexer {
         }
     }
 
-    private MinutiaeToken processWhitespaceMinutiae() {
+    private Minutiae processWhitespaceMinutiae() {
         while (!charReader.isEOF()) {
             char c = charReader.peek();
             switch (c) {
@@ -312,7 +312,7 @@ public class WinZigLexer extends AbstractLexer {
         return createMinutiae(TokenKind.WHITESPACE_MINUTIAE);
     }
 
-    private MinutiaeToken processEndOfLineMinutiae() {
+    private Minutiae processEndOfLineMinutiae() {
         char c = charReader.peek();
         switch (c) {
             case LexerTerminals.NEWLINE:
@@ -329,7 +329,7 @@ public class WinZigLexer extends AbstractLexer {
         }
     }
 
-    private MinutiaeToken processCommentMinutiae() {
+    private Minutiae processCommentMinutiae() {
         while (!charReader.isEOF()) {
             char nextChar = charReader.peek();
             if (nextChar == LexerTerminals.NEWLINE || nextChar == LexerTerminals.CARRIAGE_RETURN) {
@@ -340,7 +340,7 @@ public class WinZigLexer extends AbstractLexer {
         return createMinutiae(TokenKind.COMMENT_MINUTIAE);
     }
 
-    private MinutiaeToken processMultilineCommentMinutiae() {
+    private Minutiae processMultilineCommentMinutiae() {
         while (!charReader.isEOF()) {
             char nextChar = charReader.peek();
             charReader.advance();
@@ -357,19 +357,19 @@ public class WinZigLexer extends AbstractLexer {
      * -------------------------------
      */
 
-    private SyntaxToken createToken(TokenKind kind) {
-        return new SyntaxToken(kind, getLeadingMinutiae(), processTrailingMinutiae());
+    private Token createToken(TokenKind kind) {
+        return new Token(kind, getLeadingMinutiae(), processTrailingMinutiae());
     }
 
-    private SyntaxToken createIdentifierToken() {
+    private Token createIdentifierToken() {
         return new IdentifierToken(charReader.getMarkedChars(), getLeadingMinutiae(), processTrailingMinutiae());
     }
 
-    private SyntaxToken createLiteralToken(TokenKind kind) {
+    private Token createLiteralToken(TokenKind kind) {
         return new LiteralToken(kind, charReader.getMarkedChars(), getLeadingMinutiae(), processTrailingMinutiae());
     }
 
-    private MinutiaeToken createMinutiae(TokenKind kind) {
-        return new MinutiaeToken(kind, charReader.getMarkedChars());
+    private Minutiae createMinutiae(TokenKind kind) {
+        return new Minutiae(kind, charReader.getMarkedChars());
     }
 }

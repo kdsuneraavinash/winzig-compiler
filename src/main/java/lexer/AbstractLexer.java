@@ -1,30 +1,26 @@
 package lexer;
 
-import lexer.tokens.MinutiaeToken;
-import lexer.tokens.SyntaxToken;
+import lexer.tokens.Minutiae;
+import lexer.tokens.Token;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public abstract class AbstractLexer {
     protected final CharReader charReader;
-    protected List<MinutiaeToken> leadingMinutiae;
+    protected List<Minutiae> leadingMinutiae;
 
     public AbstractLexer(CharReader charReader) {
         this.charReader = charReader;
         this.leadingMinutiae = new ArrayList<>();
     }
 
-    public boolean isEOF() {
-        return charReader.isEOF();
-    }
+    public abstract Token read();
 
-    public abstract SyntaxToken read();
-
-    protected List<MinutiaeToken> getLeadingMinutiae() {
-        List<MinutiaeToken> minutiaeTokens = leadingMinutiae;
+    protected List<Minutiae> getLeadingMinutiae() {
+        List<Minutiae> minutiae = leadingMinutiae;
         this.leadingMinutiae = new ArrayList<>();
-        return minutiaeTokens;
+        return minutiae;
     }
 
     protected static boolean isDigit(int c) {

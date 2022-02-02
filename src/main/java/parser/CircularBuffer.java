@@ -1,4 +1,4 @@
-package common;
+package parser;
 
 import java.util.Arrays;
 

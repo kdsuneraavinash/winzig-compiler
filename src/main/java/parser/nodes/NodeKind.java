@@ -70,10 +70,6 @@ public enum NodeKind {
         this.value = value;
     }
 
-    NodeKind() {
-        this("");
-    }
-
     public String getValue() {
         return value;
     }

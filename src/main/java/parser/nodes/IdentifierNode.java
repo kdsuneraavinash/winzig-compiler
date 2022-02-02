@@ -1,11 +1,11 @@
 package parser.nodes;
 
-import lexer.tokens.SyntaxToken;
+import lexer.tokens.Token;
 
 public class IdentifierNode extends TokenNode {
     private final Node child;
 
-    public IdentifierNode(SyntaxToken token) {
+    public IdentifierNode(Token token) {
         super(token.getKind());
         this.child = new TokenNode(token);
     }

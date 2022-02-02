@@ -1,10 +1,10 @@
 package lexer.tokens;
 
-public class MinutiaeToken {
+public class Minutiae {
     private final TokenKind kind;
     private final String content;
 
-    public MinutiaeToken(TokenKind kind, String content) {
+    public Minutiae(TokenKind kind, String content) {
         this.kind = kind;
         this.content = content;
     }

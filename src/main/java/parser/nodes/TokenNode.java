@@ -1,13 +1,13 @@
 package parser.nodes;
 
-import lexer.tokens.SyntaxToken;
+import lexer.tokens.Token;
 import lexer.tokens.TokenKind;
 
 public class TokenNode implements Node {
     protected final TokenKind kind;
     protected final String value;
 
-    public TokenNode(SyntaxToken token) {
+    public TokenNode(Token token) {
         this.kind = token.getKind();
         this.value = token.getValue();
     }
