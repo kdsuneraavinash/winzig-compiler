@@ -23,24 +23,20 @@ public abstract class AbstractParser {
     public abstract ASTNode parse();
 
     protected int parseIdentifier(TokenKind kind) {
-        TokenKind tokenKind = peekNextKind();
-        if (tokenKind == kind) {
-            Token nextToken = tokenReader.read();
-            nodeStack.push(new IdentifierNode(nextToken));
-            return 1;
-        } else {
-            TokenKind foundKind = peekNextKind();
-            String message = String.format("Expected %s[%s] but found %s[%s]",
-                    kind, kind.getValue(), foundKind, foundKind.getValue());
-            throw new IllegalStateException(message);
-        }
+        Token nextToken = readToken(kind);
+        nodeStack.push(new IdentifierNode(nextToken));
+        return 1;
     }
 
     protected int parseToken(TokenKind kind) {
+        readToken(kind);
+        return 0;
+    }
+
+    private Token readToken(TokenKind kind) {
         TokenKind tokenKind = peekNextKind();
         if (tokenKind == kind) {
-            tokenReader.read();
-            return 0;
+            return tokenReader.read();
         } else {
             TokenKind foundKind = peekNextKind();
             String message = String.format("Expected %s[%s] but found %s[%s]",
