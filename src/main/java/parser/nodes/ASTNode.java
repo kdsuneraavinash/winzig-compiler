@@ -24,4 +24,16 @@ public class ASTNode implements Node {
     public String toString() {
         return String.format("%s(%s)", kind.getValue(), children.size());
     }
+
+    public NodeKind getKind() {
+        return kind;
+    }
+
+    public Node getChild(int i) {
+        return children.get(i);
+    }
+
+    public int getSize() {
+        return children.size();
+    }
 }

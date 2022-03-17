@@ -1,20 +1,19 @@
-import parser.nodes.ASTNode;
-import parser.nodes.IdentifierNode;
-import parser.nodes.Node;
 import lexer.CharReader;
 import lexer.WinZigLexer;
 import parser.WinZigParser;
-import picocli.CommandLine;
+import parser.nodes.ASTNode;
+import semantic.SemanticAnalyzer;
 
 import java.io.File;
 import java.nio.file.Files;
 import java.util.concurrent.Callable;
 
-@CommandLine.Command(name = "winzig", mixinStandardHelpOptions = true, version = "winzig 0.1",
-        description = "Compiles a winzig program.")
 public class WinZig implements Callable<Integer> {
-    @CommandLine.Parameters(index = "0", description = "The source to compile.")
-    private File file;
+    private final File file;
+
+    public WinZig(File file) {
+        this.file = file;
+    }
 
     @Override
     public Integer call() throws Exception {
@@ -22,25 +21,28 @@ public class WinZig implements Callable<Integer> {
         CharReader charReader = CharReader.from(sourceCode);
         WinZigLexer lexer = new WinZigLexer(charReader);
         WinZigParser parser = new WinZigParser(lexer);
+        SemanticAnalyzer analyzer = new SemanticAnalyzer();
         ASTNode node = parser.parse();
-        printTree(node, 0);
+        analyzer.analyze(node);
         return 0;
     }
 
-    public static void printTree(ASTNode node, int depth) {
-        System.out.println(". ".repeat(depth) + node.toString());
-        for (Node child : node.getChildren()) {
-            if (child instanceof ASTNode) {
-                printTree((ASTNode) child, depth + 1);
-            } else if (child instanceof IdentifierNode) {
-                System.out.println(". ".repeat(depth + 1) + child);
-                System.out.println(". ".repeat(depth + 2) + ((IdentifierNode) child).getChild());
-            }
-        }
-    }
-
     public static void main(String[] args) {
-        int exitCode = new CommandLine(new WinZig()).execute(args);
-        System.exit(exitCode);
+        if (args.length != 1) {
+            System.out.println("" +
+                    "Winzigc - A winzig compiler\n" +
+                    "How to run: java winzigc –ast winzig_test_programs/winzig_01");
+            System.exit(1);
+        }
+        try {
+            File file = new File(args[0]);
+            WinZig compiler = new WinZig(file);
+            int exitCode = compiler.call();
+            System.exit(exitCode);
+        } catch (Exception e) {
+            System.err.println("Something went wrong...");
+            System.err.println(e.getMessage());
+            e.printStackTrace();
+        }
     }
 }

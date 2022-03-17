@@ -18,4 +18,8 @@ public class IdentifierNode extends TokenNode {
     public String toString() {
         return String.format("%s(1)", value);
     }
+
+    public String getValue() {
+        return value;
+    }
 }
