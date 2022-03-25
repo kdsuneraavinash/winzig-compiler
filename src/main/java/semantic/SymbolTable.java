@@ -1,20 +1,32 @@
 package semantic;
 
+import semantic.attrs.Symbol;
+
 import java.util.HashMap;
 import java.util.Map;
 
 public class SymbolTable {
-    private final Map<String, Integer> symbols;
+    private final Map<String, Symbol> symbols;
 
     public SymbolTable() {
         symbols = new HashMap<>();
     }
 
-    public void enter(String symbol, int position) {
-        symbols.put(symbol, position);
+    public void enter(Symbol symbol) {
+        if (symbols.containsKey(symbol.getName())) {
+            throw new IllegalStateException("Redefinition of symbol " + symbol.getName());
+        }
+        symbols.put(symbol.getName(), symbol);
     }
 
-    public int lookup(String symbol) {
-        return symbols.getOrDefault(symbol, 0);
+    public Symbol lookup(String name) {
+        if (!symbols.containsKey(name)) {
+            throw new IllegalStateException("Undefined symbol " + name);
+        }
+        return symbols.getOrDefault(name, null);
+    }
+
+    public boolean isDefined(String name) {
+        return symbols.containsKey(name);
     }
 }
