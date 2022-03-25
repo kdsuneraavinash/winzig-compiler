@@ -21,13 +21,13 @@ public class SemanticAnalyzer extends BaseVisitor {
         this.error = new ArrayList<>();
         this.code = new ArrayList<>();
         visit(astNode);
-        System.out.println("Errors ====");
+        System.out.println("----------------------------------------------------");
         System.out.println(String.join("\n", error));
-        System.out.println("Code ====");
+        System.out.println("----------------------------------------------------");
         for (Instruction line : this.code) {
             System.out.println(line);
         }
-        System.out.println("Global Scope ====");
+        System.out.println("----------------------------------------------------");
         System.out.println(this.scope);
     }
 
@@ -55,26 +55,29 @@ public class SemanticAnalyzer extends BaseVisitor {
         IdentifierNode valueNode = (IdentifierNode) astNode.getChild(1); // ConstValue
         String identifier = identifierNode.getIdentifierValue();
         String value = valueNode.getIdentifierValue();
-
-        // Determine type
         TokenKind tokenKind = valueNode.getKind();
-        if (tokenKind == TokenKind.INTEGER_LITERAL) {
-            scope.type = SemanticType.INTEGER_TYPE;
-        } else if (tokenKind == TokenKind.CHAR_LITERAL) {
-            scope.type = SemanticType.CHAR_TYPE;
-        } else {
-            error.add("Type mismatched. expected int/char, found " + scope.type);
+
+        // Constants cannot be defined twice, even if they have in nested scopes.
+        if (scope.isDefined(identifier)) {
+            error.add("Variable already defined: " + identifier);
+            return;
         }
 
-        // Error: variable already defined.
-        if (scope.isDefined(identifier)) {
-            error.add("Variable " + identifier + " already defined.");
+        // Supports char/int literals only. Each is stored as integer regardless of type.
+        int registerValue;
+        if (tokenKind == TokenKind.CHAR_LITERAL) {
+            registerValue = value.codePointAt(1);
+        } else if (tokenKind == TokenKind.INTEGER_LITERAL) {
+            registerValue = Integer.parseInt(value);
+        } else {
+            error.add("Type mismatched. expected int/char, found: " + tokenKind);
             return;
         }
 
         // Define the constant at the top and mark the symbol as constant.
-        code.add(new Instruction(InstructionMnemonic.LIT, value));
-        scope.enter(Symbol.constant(identifier, ++scope.top, scope.type));
+        scope.type = SemanticType.CONSTANT;
+        code.add(new Instruction(InstructionMnemonic.LIT, registerValue));
+        scope.enter(new Symbol(identifier, ++scope.top, scope.type));
         scope.next++;
     }
 
@@ -134,10 +137,38 @@ public class SemanticAnalyzer extends BaseVisitor {
 
     @Override
     protected void visitVar(ASTNode astNode) {
+        List<IdentifierNode> identifierNodes = new ArrayList<>();
         for (int i = 0; i < astNode.getSize() - 1; i++) { // list
-            visit(astNode.getChild(i)); // Name
+            identifierNodes.add((IdentifierNode) astNode.getChild(i)); // Name
         }
-        visit(astNode.getChild(astNode.getSize() - 1)); // Name
+        IdentifierNode typeNode = (IdentifierNode) astNode.getChild(astNode.getSize() - 1); // Name (Type)
+        String type = typeNode.getIdentifierValue();
+
+        // The data type should be defined first.
+        if (!scope.isDefined(type)) {
+            error.add("Undefined type found: " + type);
+            return;
+        }
+        // The data should be of 'TYPE' type.
+        Symbol typeSymbol = scope.lookup(type);
+        if (!SemanticType.TYPE.equals(typeSymbol.getType())) {
+            error.add("Expected " + type + " to be a type, found: " + typeSymbol.getType());
+            return;
+        }
+
+        // Define the variables at the top and mark the symbol as variable.
+        scope.type = SemanticType.VARIABLE;
+        for (IdentifierNode identifierNode : identifierNodes) {
+            String identifier = identifierNode.getIdentifierValue();
+            if (scope.isDefined(identifier)) {
+                // TODO: Does not handle multiple variables with the same name even even if on a top scope.
+                error.add("Variable " + identifier + " already defined.");
+                continue;
+            }
+            code.add(new Instruction(InstructionMnemonic.LIT, "0"));
+            scope.enter(new Symbol(identifier, ++scope.top, scope.type));
+            scope.next++;
+        }
     }
 
     @Override

@@ -4,13 +4,17 @@ public class Symbol {
     private final String name;
     private final int position;
     private final SemanticType type;
-    private final boolean isConstant;
 
-    private Symbol(String name, int position, SemanticType type, boolean isConstant) {
+    public Symbol(String name, int position, SemanticType type) {
         this.name = name;
         this.position = position;
         this.type = type;
-        this.isConstant = isConstant;
+    }
+
+    public Symbol(String name, SemanticType type) {
+        this.name = name;
+        this.position = -1;
+        this.type = type;
     }
 
     public String getName() {
@@ -25,20 +29,10 @@ public class Symbol {
         return type;
     }
 
-    public boolean isConstant() {
-        return isConstant;
-    }
-
-    public static Symbol constant(String name, int position, SemanticType type) {
-        return new Symbol(name, position, type, true);
-    }
-
     @Override
     public String toString() {
-        return "Symbol{" +
-                "name='" + name + '\'' +
-                ", type=" + type +
-                ", isConstant=" + isConstant +
-                '}';
+        String str = "[" + type + "] " + name;
+        if (position != -1) str += "@" + position;
+        return str;
     }
 }

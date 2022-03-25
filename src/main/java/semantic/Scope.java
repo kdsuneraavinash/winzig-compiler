@@ -5,6 +5,7 @@ import semantic.attrs.Symbol;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.StringJoiner;
 
 public class Scope {
     private final Scope parent;
@@ -15,6 +16,9 @@ public class Scope {
 
     public Scope() {
         this(null);
+        enter(new Symbol("integer", SemanticType.TYPE));
+        enter(new Symbol("char", SemanticType.TYPE));
+        enter(new Symbol("boolean", SemanticType.TYPE));
     }
 
     public Scope(Scope parent) {
@@ -22,7 +26,7 @@ public class Scope {
         symbols = new HashMap<>();
         this.next = 1;
         this.top = 0;
-        this.type = SemanticType.NOT_SET;
+        this.type = SemanticType.UNKNOWN;
     }
 
     /**
@@ -60,14 +64,14 @@ public class Scope {
 
     @Override
     public String toString() {
-
-
-        return "Scope{" +
-                "parent=" + parent +
-                ", symbols=" + symbols +
-                ", next=" + next +
-                ", top=" + top +
-                ", type=" + type +
-                '}';
+        StringJoiner sj = new StringJoiner("\n");
+        sj.add("Next: " + next);
+        sj.add("Top: " + top);
+        sj.add("Type: " + type);
+        sj.add("Symbols: ");
+        for (Map.Entry<String, Symbol> entry : symbols.entrySet()) {
+            sj.add("\t" + entry.getKey() + ": " + entry.getValue());
+        }
+        return sj.toString();
     }
 }

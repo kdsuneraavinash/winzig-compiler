@@ -1,0 +1,5 @@
+program factors:
+    const a = 10, b = 'H';
+    var c: integer;
+begin
+end factors.
