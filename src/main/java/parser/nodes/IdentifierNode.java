@@ -3,15 +3,15 @@ package parser.nodes;
 import lexer.tokens.Token;
 
 public class IdentifierNode extends TokenNode {
-    private final Node child;
+    private final TokenNode child;
 
     public IdentifierNode(Token token) {
         super(token.getKind());
         this.child = new TokenNode(token);
     }
 
-    public Node getChild() {
-        return child;
+    public String getIdentifierValue() {
+        return child.getValue();
     }
 
     @Override

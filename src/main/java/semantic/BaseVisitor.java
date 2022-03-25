@@ -5,225 +5,280 @@ import parser.nodes.IdentifierNode;
 import parser.nodes.Node;
 
 public abstract class BaseVisitor {
-    public SemanticContext visit(Node node, SemanticContext inheritedContext) {
-        System.out.println(node);
+    public void visit(Node node) {
+        // System.err.println(node);
         if (node instanceof IdentifierNode) {
-            return visitIdentifier((IdentifierNode) node, inheritedContext);
+            visitIdentifier((IdentifierNode) node);
+            return;
         } else if (node instanceof ASTNode) {
             ASTNode astNode = (ASTNode) node;
             switch (astNode.getKind()) {
                 case PROGRAM:
-                    return visitProgram(astNode, inheritedContext);
+                    visitProgram(astNode);
+                    return;
                 case CONSTS:
-                    return visitConsts(astNode, inheritedContext);
+                    visitConsts(astNode);
+                    return;
                 case CONST:
-                    return visitConst(astNode, inheritedContext);
+                    visitConst(astNode);
+                    return;
                 case TYPES:
-                    return visitTypes(astNode, inheritedContext);
+                    visitTypes(astNode);
+                    return;
                 case TYPE:
-                    return visitType(astNode, inheritedContext);
+                    visitType(astNode);
+                    return;
                 case LIT:
-                    return visitLit(astNode, inheritedContext);
+                    visitLit(astNode);
+                    return;
                 case SUBPROGS:
-                    return visitSubprogs(astNode, inheritedContext);
+                    visitSubprogs(astNode);
+                    return;
                 case FCN:
-                    return visitFcn(astNode, inheritedContext);
+                    visitFcn(astNode);
+                    return;
                 case PARAMS:
-                    return visitParams(astNode, inheritedContext);
+                    visitParams(astNode);
+                    return;
                 case DCLNS:
-                    return visitDclns(astNode, inheritedContext);
+                    visitDclns(astNode);
+                    return;
                 case VAR:
-                    return visitVar(astNode, inheritedContext);
+                    visitVar(astNode);
+                    return;
                 case BLOCK:
-                    return visitBlock(astNode, inheritedContext);
+                    visitBlock(astNode);
+                    return;
                 case OUTPUT_STATEMENT:
-                    return visitOutputStatement(astNode, inheritedContext);
+                    visitOutputStatement(astNode);
+                    return;
                 case IF_STATEMENT:
-                    return visitIfStatement(astNode, inheritedContext);
+                    visitIfStatement(astNode);
+                    return;
                 case WHILE_STATEMENT:
-                    return visitWhileStatement(astNode, inheritedContext);
+                    visitWhileStatement(astNode);
+                    return;
                 case REPEAT_STATEMENT:
-                    return visitRepeatStatement(astNode, inheritedContext);
+                    visitRepeatStatement(astNode);
+                    return;
                 case FOR_STATEMENT:
-                    return visitForStatement(astNode, inheritedContext);
+                    visitForStatement(astNode);
+                    return;
                 case LOOP_STATEMENT:
-                    return visitLoopStatement(astNode, inheritedContext);
+                    visitLoopStatement(astNode);
+                    return;
                 case CASE_STATEMENT:
-                    return visitCaseStatement(astNode, inheritedContext);
+                    visitCaseStatement(astNode);
+                    return;
                 case READ_STATEMENT:
-                    return visitReadStatement(astNode, inheritedContext);
+                    visitReadStatement(astNode);
+                    return;
                 case EXIT_STATEMENT:
-                    return visitExitStatement(astNode, inheritedContext);
+                    visitExitStatement(astNode);
+                    return;
                 case RETURN_STATEMENT:
-                    return visitReturnStatement(astNode, inheritedContext);
+                    visitReturnStatement(astNode);
+                    return;
                 case NULL_STATEMENT:
-                    return visitNullStatement(astNode, inheritedContext);
+                    visitNullStatement(astNode);
+                    return;
                 case INTEGER_OUT_EXP:
-                    return visitIntegerOutExp(astNode, inheritedContext);
+                    visitIntegerOutExp(astNode);
+                    return;
                 case STRING_OUT_EXP:
-                    return visitStringOutExp(astNode, inheritedContext);
+                    visitStringOutExp(astNode);
+                    return;
                 case CASE_CLAUSE:
-                    return visitCaseClause(astNode, inheritedContext);
+                    visitCaseClause(astNode);
+                    return;
                 case DOUBLE_DOTS_CLAUSE:
-                    return visitDoubleDotsClause(astNode, inheritedContext);
+                    visitDoubleDotsClause(astNode);
+                    return;
                 case OTHERWISE_CLAUSE:
-                    return visitOtherwiseClause(astNode, inheritedContext);
+                    visitOtherwiseClause(astNode);
+                    return;
                 case ASSIGNMENT_STATEMENT:
-                    return visitAssignmentStatement(astNode, inheritedContext);
+                    visitAssignmentStatement(astNode);
+                    return;
                 case SWAP_STATEMENT:
-                    return visitSwapStatement(astNode, inheritedContext);
+                    visitSwapStatement(astNode);
+                    return;
                 case TRUE:
-                    return visitTrue(astNode, inheritedContext);
+                    visitTrue(astNode);
+                    return;
                 case LT_EQUAL_EXPRESSION:
-                    return visitLtEqualExpression(astNode, inheritedContext);
+                    visitLtEqualExpression(astNode);
+                    return;
                 case LT_EXPRESSION:
-                    return visitLtExpression(astNode, inheritedContext);
+                    visitLtExpression(astNode);
+                    return;
                 case GT_EQUAL_EXPRESSION:
-                    return visitGtEqualExpression(astNode, inheritedContext);
+                    visitGtEqualExpression(astNode);
+                    return;
                 case GT_EXPRESSION:
-                    return visitGtExpression(astNode, inheritedContext);
+                    visitGtExpression(astNode);
+                    return;
                 case EQUALS_EXPRESSION:
-                    return visitEqualsExpression(astNode, inheritedContext);
+                    visitEqualsExpression(astNode);
+                    return;
                 case NOT_EQUALS_EXPRESSION:
-                    return visitNotEqualsExpression(astNode, inheritedContext);
+                    visitNotEqualsExpression(astNode);
+                    return;
                 case ADD_EXPRESSION:
-                    return visitAddExpression(astNode, inheritedContext);
+                    visitAddExpression(astNode);
+                    return;
                 case SUBTRACT_EXPRESSION:
-                    return visitSubtractExpression(astNode, inheritedContext);
+                    visitSubtractExpression(astNode);
+                    return;
                 case OR_EXPRESSION:
-                    return visitOrExpression(astNode, inheritedContext);
+                    visitOrExpression(astNode);
+                    return;
                 case MULTIPLY_EXPRESSION:
-                    return visitMultiplyExpression(astNode, inheritedContext);
+                    visitMultiplyExpression(astNode);
+                    return;
                 case DIVIDE_EXPRESSION:
-                    return visitDivideExpression(astNode, inheritedContext);
+                    visitDivideExpression(astNode);
+                    return;
                 case AND_EXPRESSION:
-                    return visitAndExpression(astNode, inheritedContext);
+                    visitAndExpression(astNode);
+                    return;
                 case MOD_EXPRESSION:
-                    return visitModExpression(astNode, inheritedContext);
+                    visitModExpression(astNode);
+                    return;
                 case NEGATIVE_EXPRESSION:
-                    return visitNegativeExpression(astNode, inheritedContext);
+                    visitNegativeExpression(astNode);
+                    return;
                 case NOT_EXPRESSION:
-                    return visitNotExpression(astNode, inheritedContext);
+                    visitNotExpression(astNode);
+                    return;
                 case EOF_EXPRESSION:
-                    return visitEofExpression(astNode, inheritedContext);
+                    visitEofExpression(astNode);
+                    return;
                 case CALL_EXPRESSION:
-                    return visitCallExpression(astNode, inheritedContext);
+                    visitCallExpression(astNode);
+                    return;
                 case SUCC_EXPRESSION:
-                    return visitSuccExpression(astNode, inheritedContext);
+                    visitSuccExpression(astNode);
+                    return;
                 case PRED_EXPRESSION:
-                    return visitPredExpression(astNode, inheritedContext);
+                    visitPredExpression(astNode);
+                    return;
                 case CHR_EXPRESSION:
-                    return visitChrExpression(astNode, inheritedContext);
+                    visitChrExpression(astNode);
+                    return;
                 case ORD_EXPRESSION:
-                    return visitOrdExpression(astNode, inheritedContext);
+                    visitOrdExpression(astNode);
+                    return;
+                default:
+                    throw new IllegalArgumentException("Unknown AST node type: " + astNode.getKind());
             }
         }
         throw new IllegalStateException("Unknown node type: " + node.toString());
     }
 
-    protected abstract SemanticContext visitProgram(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitProgram(ASTNode astNode);
 
-    protected abstract SemanticContext visitConsts(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitConsts(ASTNode astNode);
 
-    protected abstract SemanticContext visitConst(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitConst(ASTNode astNode);
 
-    protected abstract SemanticContext visitTypes(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitTypes(ASTNode astNode);
 
-    protected abstract SemanticContext visitType(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitType(ASTNode astNode);
 
-    protected abstract SemanticContext visitLit(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitLit(ASTNode astNode);
 
-    protected abstract SemanticContext visitSubprogs(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitSubprogs(ASTNode astNode);
 
-    protected abstract SemanticContext visitFcn(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitFcn(ASTNode astNode);
 
-    protected abstract SemanticContext visitParams(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitParams(ASTNode astNode);
 
-    protected abstract SemanticContext visitDclns(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitDclns(ASTNode astNode);
 
-    protected abstract SemanticContext visitVar(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitVar(ASTNode astNode);
 
-    protected abstract SemanticContext visitBlock(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitBlock(ASTNode astNode);
 
-    protected abstract SemanticContext visitOutputStatement(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitOutputStatement(ASTNode astNode);
 
-    protected abstract SemanticContext visitIfStatement(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitIfStatement(ASTNode astNode);
 
-    protected abstract SemanticContext visitWhileStatement(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitWhileStatement(ASTNode astNode);
 
-    protected abstract SemanticContext visitRepeatStatement(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitRepeatStatement(ASTNode astNode);
 
-    protected abstract SemanticContext visitForStatement(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitForStatement(ASTNode astNode);
 
-    protected abstract SemanticContext visitLoopStatement(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitLoopStatement(ASTNode astNode);
 
-    protected abstract SemanticContext visitCaseStatement(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitCaseStatement(ASTNode astNode);
 
-    protected abstract SemanticContext visitReadStatement(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitReadStatement(ASTNode astNode);
 
-    protected abstract SemanticContext visitExitStatement(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitExitStatement(ASTNode astNode);
 
-    protected abstract SemanticContext visitReturnStatement(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitReturnStatement(ASTNode astNode);
 
-    protected abstract SemanticContext visitNullStatement(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitNullStatement(ASTNode astNode);
 
-    protected abstract SemanticContext visitIntegerOutExp(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitIntegerOutExp(ASTNode astNode);
 
-    protected abstract SemanticContext visitStringOutExp(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitStringOutExp(ASTNode astNode);
 
-    protected abstract SemanticContext visitCaseClause(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitCaseClause(ASTNode astNode);
 
-    protected abstract SemanticContext visitDoubleDotsClause(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitDoubleDotsClause(ASTNode astNode);
 
-    protected abstract SemanticContext visitOtherwiseClause(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitOtherwiseClause(ASTNode astNode);
 
-    protected abstract SemanticContext visitAssignmentStatement(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitAssignmentStatement(ASTNode astNode);
 
-    protected abstract SemanticContext visitSwapStatement(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitSwapStatement(ASTNode astNode);
 
-    protected abstract SemanticContext visitTrue(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitTrue(ASTNode astNode);
 
-    protected abstract SemanticContext visitLtEqualExpression(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitLtEqualExpression(ASTNode astNode);
 
-    protected abstract SemanticContext visitLtExpression(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitLtExpression(ASTNode astNode);
 
-    protected abstract SemanticContext visitGtEqualExpression(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitGtEqualExpression(ASTNode astNode);
 
-    protected abstract SemanticContext visitGtExpression(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitGtExpression(ASTNode astNode);
 
-    protected abstract SemanticContext visitEqualsExpression(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitEqualsExpression(ASTNode astNode);
 
-    protected abstract SemanticContext visitNotEqualsExpression(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitNotEqualsExpression(ASTNode astNode);
 
-    protected abstract SemanticContext visitAddExpression(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitAddExpression(ASTNode astNode);
 
-    protected abstract SemanticContext visitSubtractExpression(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitSubtractExpression(ASTNode astNode);
 
-    protected abstract SemanticContext visitOrExpression(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitOrExpression(ASTNode astNode);
 
-    protected abstract SemanticContext visitMultiplyExpression(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitMultiplyExpression(ASTNode astNode);
 
-    protected abstract SemanticContext visitDivideExpression(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitDivideExpression(ASTNode astNode);
 
-    protected abstract SemanticContext visitAndExpression(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitAndExpression(ASTNode astNode);
 
-    protected abstract SemanticContext visitModExpression(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitModExpression(ASTNode astNode);
 
-    protected abstract SemanticContext visitNegativeExpression(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitNegativeExpression(ASTNode astNode);
 
-    protected abstract SemanticContext visitNotExpression(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitNotExpression(ASTNode astNode);
 
-    protected abstract SemanticContext visitEofExpression(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitEofExpression(ASTNode astNode);
 
-    protected abstract SemanticContext visitCallExpression(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitCallExpression(ASTNode astNode);
 
-    protected abstract SemanticContext visitSuccExpression(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitSuccExpression(ASTNode astNode);
 
-    protected abstract SemanticContext visitPredExpression(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitPredExpression(ASTNode astNode);
 
-    protected abstract SemanticContext visitChrExpression(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitChrExpression(ASTNode astNode);
 
-    protected abstract SemanticContext visitOrdExpression(ASTNode astNode, SemanticContext inheritedContext);
+    protected abstract void visitOrdExpression(ASTNode astNode);
 
-    public abstract SemanticContext visitIdentifier(IdentifierNode identifierNode, SemanticContext inheritedContext);
+    public abstract void visitIdentifier(IdentifierNode identifierNode);
 }

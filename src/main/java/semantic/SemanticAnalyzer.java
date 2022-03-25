@@ -1,464 +1,392 @@
 package semantic;
 
+import lexer.tokens.TokenKind;
 import parser.nodes.ASTNode;
 import parser.nodes.IdentifierNode;
-import semantic.attrs.CodeSegment;
-import semantic.attrs.ErrorSegment;
 import semantic.attrs.Instruction;
+import semantic.attrs.InstructionMnemonic;
 import semantic.attrs.SemanticType;
+import semantic.attrs.Symbol;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class SemanticAnalyzer extends BaseVisitor {
-    private final SymbolTable symbolTable;
-
-    public SemanticAnalyzer() {
-        symbolTable = new SymbolTable();
-    }
+    private Scope scope;
+    private List<String> error;
+    private List<Instruction> code;
 
     public void analyze(ASTNode astNode) {
-        visit(astNode, SemanticContext.empty());
-    }
-
-    @Override
-    protected SemanticContext visitProgram(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
-        context = visit(astNode.getChild(0), context); // Name
-        context = visit(astNode.getChild(1), context); // Consts
-        context = visit(astNode.getChild(2), context); // Types
-        context = visit(astNode.getChild(3), context); // Dclns
-        context = visit(astNode.getChild(4), context); // SubProgs
-        context = visit(astNode.getChild(5), context); // Body
-        context = visit(astNode.getChild(6), context); // Name
-        return context;
-    }
-
-    @Override
-    protected SemanticContext visitConsts(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
-        for (int i = 0; i < astNode.getSize(); i++) { // list
-            context = visit(astNode.getChild(i), context); // Const
+        this.scope = new Scope();
+        this.error = new ArrayList<>();
+        this.code = new ArrayList<>();
+        visit(astNode);
+        System.out.println("Errors ====");
+        System.out.println(String.join("\n", error));
+        System.out.println("Code ====");
+        for (Instruction line : this.code) {
+            System.out.println(line);
         }
-        return context;
+        System.out.println("Global Scope ====");
+        System.out.println(this.scope);
     }
 
     @Override
-    protected SemanticContext visitConst(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
-        context = visit(astNode.getChild(0), context); // Name
-        context = visit(astNode.getChild(1), context); // ConstValue
-        return context;
+    protected void visitProgram(ASTNode astNode) {
+        visit(astNode.getChild(0)); // Name
+        visit(astNode.getChild(1)); // Consts
+        visit(astNode.getChild(2)); // Types
+        visit(astNode.getChild(3)); // Dclns
+        visit(astNode.getChild(4)); // SubProgs
+        visit(astNode.getChild(5)); // Body
+        visit(astNode.getChild(6)); // Name
     }
 
     @Override
-    protected SemanticContext visitTypes(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
+    protected void visitConsts(ASTNode astNode) {
+        for (int i = 0; i < astNode.getSize(); i++) { // list
+            visit(astNode.getChild(i)); // Const
+        }
+    }
+
+    @Override
+    protected void visitConst(ASTNode astNode) {
+        IdentifierNode identifierNode = (IdentifierNode) astNode.getChild(0); // Name
+        IdentifierNode valueNode = (IdentifierNode) astNode.getChild(1); // ConstValue
+        String identifier = identifierNode.getIdentifierValue();
+        String value = valueNode.getIdentifierValue();
+
+        // Determine type
+        TokenKind tokenKind = valueNode.getKind();
+        if (tokenKind == TokenKind.INTEGER_LITERAL) {
+            scope.type = SemanticType.INTEGER_TYPE;
+        } else if (tokenKind == TokenKind.CHAR_LITERAL) {
+            scope.type = SemanticType.CHAR_TYPE;
+        } else {
+            error.add("Type mismatched. expected int/char, found " + scope.type);
+        }
+
+        // Error: variable already defined.
+        if (scope.isDefined(identifier)) {
+            error.add("Variable " + identifier + " already defined.");
+            return;
+        }
+
+        // Define the constant at the top and mark the symbol as constant.
+        code.add(new Instruction(InstructionMnemonic.LIT, value));
+        scope.enter(Symbol.constant(identifier, ++scope.top, scope.type));
+        scope.next++;
+    }
+
+    @Override
+    protected void visitTypes(ASTNode astNode) {
         for (int i = 0; i < astNode.getSize(); i++) { // +
-            context = visit(astNode.getChild(i), context); // Type
+            visit(astNode.getChild(i)); // Type
         }
-        return context;
     }
 
     @Override
-    protected SemanticContext visitType(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
-        context = visit(astNode.getChild(0), context); // Name
-        context = visit(astNode.getChild(1), context); // ListList
-        return context;
+    protected void visitType(ASTNode astNode) {
+        // TODO: ???
+        visit(astNode.getChild(0)); // Name
+        visit(astNode.getChild(1)); // ListList
     }
 
     @Override
-    protected SemanticContext visitLit(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
+    protected void visitLit(ASTNode astNode) {
         for (int i = 0; i < astNode.getSize(); i++) { // list
-            context = visit(astNode.getChild(i), context); // Name
+            visit(astNode.getChild(i)); // Name
         }
-        return context;
     }
 
     @Override
-    protected SemanticContext visitSubprogs(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
+    protected void visitSubprogs(ASTNode astNode) {
         for (int i = 0; i < astNode.getSize(); i++) { // *
-            context = visit(astNode.getChild(i), context); // Fcn
+            visit(astNode.getChild(i)); // Fcn
         }
-        return context;
     }
 
     @Override
-    protected SemanticContext visitFcn(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
-        context = visit(astNode.getChild(0), context); // Name
-        context = visit(astNode.getChild(1), context); // Params
-        context = visit(astNode.getChild(2), context); // Name
-        context = visit(astNode.getChild(3), context); // Consts
-        context = visit(astNode.getChild(4), context); // Types
-        context = visit(astNode.getChild(5), context); // Dclns
-        context = visit(astNode.getChild(6), context); // Body
-        context = visit(astNode.getChild(7), context); // Name
-        return context;
+    protected void visitFcn(ASTNode astNode) {
+        visit(astNode.getChild(0)); // Name
+        visit(astNode.getChild(1)); // Params
+        visit(astNode.getChild(2)); // Name
+        visit(astNode.getChild(3)); // Consts
+        visit(astNode.getChild(4)); // Types
+        visit(astNode.getChild(5)); // Dclns
+        visit(astNode.getChild(6)); // Body
+        visit(astNode.getChild(7)); // Name
     }
 
     @Override
-    protected SemanticContext visitParams(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
+    protected void visitParams(ASTNode astNode) {
         for (int i = 0; i < astNode.getSize(); i++) { // list
-            context = visit(astNode.getChild(i), context); // Dcln
+            visit(astNode.getChild(i)); // Dcln
         }
-        return context;
     }
 
     @Override
-    protected SemanticContext visitDclns(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
+    protected void visitDclns(ASTNode astNode) {
         for (int i = 0; i < astNode.getSize(); i++) { // +
-            context = visit(astNode.getChild(i), context); // Dcln
+            visit(astNode.getChild(i)); // Dcln
         }
-        return context;
     }
 
     @Override
-    protected SemanticContext visitVar(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
+    protected void visitVar(ASTNode astNode) {
         for (int i = 0; i < astNode.getSize() - 1; i++) { // list
-            context = visit(astNode.getChild(i), context); // Name
+            visit(astNode.getChild(i)); // Name
         }
-        context = visit(astNode.getChild(astNode.getSize() - 1), context); // Name
-        return context;
+        visit(astNode.getChild(astNode.getSize() - 1)); // Name
     }
 
     @Override
-    protected SemanticContext visitBlock(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
+    protected void visitBlock(ASTNode astNode) {
         for (int i = 0; i < astNode.getSize(); i++) { // list
-            context = visit(astNode.getChild(i), context); // Statement
+            visit(astNode.getChild(i)); // Statement
         }
-        return context;
     }
 
     @Override
-    protected SemanticContext visitOutputStatement(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
+    protected void visitOutputStatement(ASTNode astNode) {
         for (int i = 0; i < astNode.getSize(); i++) { // list
-            context = visit(astNode.getChild(i), context); // OutExp
+            visit(astNode.getChild(i)); // OutExp
         }
-        return context;
     }
 
     @Override
-    protected SemanticContext visitIfStatement(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
-        context = visit(astNode.getChild(0), context); // Expression
-        context = visit(astNode.getChild(1), context); // Statement
+    protected void visitIfStatement(ASTNode astNode) {
+        visit(astNode.getChild(0)); // Expression
+        visit(astNode.getChild(1)); // Statement
         if (astNode.getSize() == 3) { // ?
-            context = visit(astNode.getChild(2), context); // Statement
+            visit(astNode.getChild(2)); // Statement
         }
-        return context;
     }
 
     @Override
-    protected SemanticContext visitWhileStatement(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
-        context = visit(astNode.getChild(0), context); // Expression
-        context = visit(astNode.getChild(1), context); // Statement
-        return context;
+    protected void visitWhileStatement(ASTNode astNode) {
+        visit(astNode.getChild(0)); // Expression
+        visit(astNode.getChild(1)); // Statement
     }
 
     @Override
-    protected SemanticContext visitRepeatStatement(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
+    protected void visitRepeatStatement(ASTNode astNode) {
         for (int i = 0; i < astNode.getSize() - 1; i++) { // list
-            context = visit(astNode.getChild(i), context); // Statement
+            visit(astNode.getChild(i)); // Statement
         }
-        context = visit(astNode.getChild(astNode.getSize() - 1), context); // Expression
-        return context;
+        visit(astNode.getChild(astNode.getSize() - 1)); // Expression
     }
 
     @Override
-    protected SemanticContext visitForStatement(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
-        context = visit(astNode.getChild(0), context); // ForStat
-        context = visit(astNode.getChild(1), context); // ForExp
-        context = visit(astNode.getChild(2), context); // ForStat
-        context = visit(astNode.getChild(3), context); // Statement
-        return context;
+    protected void visitForStatement(ASTNode astNode) {
+        visit(astNode.getChild(0)); // ForStat
+        visit(astNode.getChild(1)); // ForExp
+        visit(astNode.getChild(2)); // ForStat
+        visit(astNode.getChild(3)); // Statement
     }
 
     @Override
-    protected SemanticContext visitLoopStatement(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
+    protected void visitLoopStatement(ASTNode astNode) {
         for (int i = 0; i < astNode.getSize(); i++) { // list
-            context = visit(astNode.getChild(i), context); // Statement
+            visit(astNode.getChild(i)); // Statement
         }
-        return context;
     }
 
     @Override
-    protected SemanticContext visitCaseStatement(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
-        context = visit(astNode.getChild(0), context); // Expression
+    protected void visitCaseStatement(ASTNode astNode) {
+        visit(astNode.getChild(0)); // Expression
         for (int i = 1; i < astNode.getSize() - 1; i++) { // Caseclauses +
-            context = visit(astNode.getChild(i), context); // Caseclause
+            visit(astNode.getChild(i)); // Caseclause
         }
-        context = visit(astNode.getChild(astNode.getSize() - 1), context); // OtherwiseClause
-        return context;
+        visit(astNode.getChild(astNode.getSize() - 1)); // OtherwiseClause
     }
 
     @Override
-    protected SemanticContext visitReadStatement(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
+    protected void visitReadStatement(ASTNode astNode) {
         for (int i = 0; i < astNode.getSize(); i++) { // list
-            context = visit(astNode.getChild(i), context); // Name
+            visit(astNode.getChild(i)); // Name
         }
-        return context;
     }
 
     @Override
-    protected SemanticContext visitExitStatement(ASTNode astNode, SemanticContext inheritedContext) {
-        return SemanticContext.from(inheritedContext);
+    protected void visitExitStatement(ASTNode astNode) {
     }
 
     @Override
-    protected SemanticContext visitReturnStatement(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
-        context = visit(astNode.getChild(0), context); // Expression
-        return context;
+    protected void visitReturnStatement(ASTNode astNode) {
+        visit(astNode.getChild(0)); // Expression
     }
 
     @Override
-    protected SemanticContext visitNullStatement(ASTNode astNode, SemanticContext inheritedContext) {
-        return SemanticContext.from(inheritedContext);
+    protected void visitNullStatement(ASTNode astNode) {
     }
 
     @Override
-    protected SemanticContext visitIntegerOutExp(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
-        context = visit(astNode.getChild(0), context); // Expression
-        return context;
+    protected void visitIntegerOutExp(ASTNode astNode) {
+        visit(astNode.getChild(0)); // Expression
     }
 
     @Override
-    protected SemanticContext visitStringOutExp(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
-        context = visit(astNode.getChild(0), context); // StringNode
-        return context;
+    protected void visitStringOutExp(ASTNode astNode) {
+        visit(astNode.getChild(0)); // StringNode
     }
 
     @Override
-    protected SemanticContext visitCaseClause(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
+    protected void visitCaseClause(ASTNode astNode) {
         for (int i = 0; i < astNode.getSize() - 1; i++) { // list
-            context = visit(astNode.getChild(i), context); // CaseExpression
+            visit(astNode.getChild(i)); // CaseExpression
         }
-        context = visit(astNode.getChild(astNode.getSize() - 1), context); // Statement
-        return context;
+        visit(astNode.getChild(astNode.getSize() - 1)); // Statement
     }
 
     @Override
-    protected SemanticContext visitDoubleDotsClause(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
-        context = visit(astNode.getChild(0), context); // ConstValue
-        context = visit(astNode.getChild(1), context); // ConstValue
-        return context;
+    protected void visitDoubleDotsClause(ASTNode astNode) {
+        visit(astNode.getChild(0)); // ConstValue
+        visit(astNode.getChild(1)); // ConstValue
     }
 
     @Override
-    protected SemanticContext visitOtherwiseClause(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
-        context = visit(astNode.getChild(0), context); // Statement
-        return context;
+    protected void visitOtherwiseClause(ASTNode astNode) {
+        visit(astNode.getChild(0)); // Statement
     }
 
     @Override
-    protected SemanticContext visitAssignmentStatement(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
-        context = visit(astNode.getChild(0), context); // Name
-        context = visit(astNode.getChild(1), context); // Expression
-        return context;
+    protected void visitAssignmentStatement(ASTNode astNode) {
+        visit(astNode.getChild(0)); // Name
+        visit(astNode.getChild(1)); // Expression
     }
 
     @Override
-    protected SemanticContext visitSwapStatement(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
-        context = visit(astNode.getChild(0), context); // Name
-        context = visit(astNode.getChild(1), context); // Name
-        return context;
+    protected void visitSwapStatement(ASTNode astNode) {
+        visit(astNode.getChild(0)); // Name
+        visit(astNode.getChild(1)); // Name
     }
 
     @Override
-    protected SemanticContext visitTrue(ASTNode astNode, SemanticContext inheritedContext) {
-        return SemanticContext.from(inheritedContext);
+    protected void visitTrue(ASTNode astNode) {
     }
 
     @Override
-    protected SemanticContext visitLtEqualExpression(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
-        context = visit(astNode.getChild(0), context); // Term
-        context = visit(astNode.getChild(1), context); // Term
-        return context;
+    protected void visitLtEqualExpression(ASTNode astNode) {
+        visit(astNode.getChild(0)); // Term
+        visit(astNode.getChild(1)); // Term
     }
 
     @Override
-    protected SemanticContext visitLtExpression(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
-        context = visit(astNode.getChild(0), context); // Term
-        context = visit(astNode.getChild(1), context); // Term
-        return context;
+    protected void visitLtExpression(ASTNode astNode) {
+        visit(astNode.getChild(0)); // Term
+        visit(astNode.getChild(1)); // Term
     }
 
     @Override
-    protected SemanticContext visitGtEqualExpression(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
-        context = visit(astNode.getChild(0), context); // Term
-        context = visit(astNode.getChild(1), context); // Term
-        return context;
+    protected void visitGtEqualExpression(ASTNode astNode) {
+        visit(astNode.getChild(0)); // Term
+        visit(astNode.getChild(1)); // Term
     }
 
     @Override
-    protected SemanticContext visitGtExpression(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
-        context = visit(astNode.getChild(0), context); // Term
-        context = visit(astNode.getChild(1), context); // Term
-        return context;
+    protected void visitGtExpression(ASTNode astNode) {
+        visit(astNode.getChild(0)); // Term
+        visit(astNode.getChild(1)); // Term
     }
 
     @Override
-    protected SemanticContext visitEqualsExpression(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
-        context = visit(astNode.getChild(0), context); // Term
-        context = visit(astNode.getChild(1), context); // Term
-        return context;
+    protected void visitEqualsExpression(ASTNode astNode) {
+        visit(astNode.getChild(0)); // Term
+        visit(astNode.getChild(1)); // Term
     }
 
     @Override
-    protected SemanticContext visitNotEqualsExpression(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
-        context = visit(astNode.getChild(0), context); // Term
-        context = visit(astNode.getChild(1), context); // Term
-        return context;
+    protected void visitNotEqualsExpression(ASTNode astNode) {
+        visit(astNode.getChild(0)); // Term
+        visit(astNode.getChild(1)); // Term
     }
 
     @Override
-    protected SemanticContext visitAddExpression(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
-        context = visit(astNode.getChild(0), context); // Term
-        context = visit(astNode.getChild(1), context); // Factor
-        return context;
+    protected void visitAddExpression(ASTNode astNode) {
+        visit(astNode.getChild(0)); // Term
+        visit(astNode.getChild(1)); // Factor
     }
 
     @Override
-    protected SemanticContext visitSubtractExpression(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
-        context = visit(astNode.getChild(0), context); // Term
-        context = visit(astNode.getChild(1), context); // Factor
-        return context;
+    protected void visitSubtractExpression(ASTNode astNode) {
+        visit(astNode.getChild(0)); // Term
+        visit(astNode.getChild(1)); // Factor
     }
 
     @Override
-    protected SemanticContext visitOrExpression(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
-        context = visit(astNode.getChild(0), context); // Term
-        context = visit(astNode.getChild(1), context); // Factor
-        return context;
+    protected void visitOrExpression(ASTNode astNode) {
+        visit(astNode.getChild(0)); // Term
+        visit(astNode.getChild(1)); // Factor
     }
 
     @Override
-    protected SemanticContext visitMultiplyExpression(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
-        context = visit(astNode.getChild(0), context); // Factor
-        context = visit(astNode.getChild(1), context); // Primary
-        return context;
+    protected void visitMultiplyExpression(ASTNode astNode) {
+        visit(astNode.getChild(0)); // Factor
+        visit(astNode.getChild(1)); // Primary
     }
 
     @Override
-    protected SemanticContext visitDivideExpression(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
-        context = visit(astNode.getChild(0), context); // Factor
-        context = visit(astNode.getChild(1), context); // Primary
-        return context;
+    protected void visitDivideExpression(ASTNode astNode) {
+        visit(astNode.getChild(0)); // Factor
+        visit(astNode.getChild(1)); // Primary
     }
 
     @Override
-    protected SemanticContext visitAndExpression(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
-        context = visit(astNode.getChild(0), context); // Factor
-        context = visit(astNode.getChild(1), context); // Primary
-        return context;
+    protected void visitAndExpression(ASTNode astNode) {
+        visit(astNode.getChild(0)); // Factor
+        visit(astNode.getChild(1)); // Primary
     }
 
     @Override
-    protected SemanticContext visitModExpression(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
-        context = visit(astNode.getChild(0), context); // Factor
-        context = visit(astNode.getChild(1), context); // Primary
-        return context;
+    protected void visitModExpression(ASTNode astNode) {
+        visit(astNode.getChild(0)); // Factor
+        visit(astNode.getChild(1)); // Primary
     }
 
     @Override
-    protected SemanticContext visitNegativeExpression(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
-        context = visit(astNode.getChild(0), context); // Primary
-        return context;
+    protected void visitNegativeExpression(ASTNode astNode) {
+        visit(astNode.getChild(0)); // Primary
     }
 
     @Override
-    protected SemanticContext visitNotExpression(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
-        context = visit(astNode.getChild(0), context); // Primary
-        return context;
+    protected void visitNotExpression(ASTNode astNode) {
+        visit(astNode.getChild(0)); // Primary
     }
 
     @Override
-    protected SemanticContext visitEofExpression(ASTNode astNode, SemanticContext inheritedContext) {
-        return SemanticContext.from(inheritedContext);
+    protected void visitEofExpression(ASTNode astNode) {
     }
 
     @Override
-    protected SemanticContext visitCallExpression(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
-        context = visit(astNode.getChild(0), context); // Name
+    protected void visitCallExpression(ASTNode astNode) {
+        visit(astNode.getChild(0)); // Name
         for (int i = 1; i < astNode.getSize(); i++) { // list
-            context = visit(astNode.getChild(i), context); // Expression
+            visit(astNode.getChild(i)); // Expression
         }
-        return context;
     }
 
     @Override
-    protected SemanticContext visitSuccExpression(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
-        context = visit(astNode.getChild(0), context); // Expression
-        return context;
+    protected void visitSuccExpression(ASTNode astNode) {
+        visit(astNode.getChild(0)); // Expression
     }
 
     @Override
-    protected SemanticContext visitPredExpression(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
-        context = visit(astNode.getChild(0), context); // Expression
-        return context;
+    protected void visitPredExpression(ASTNode astNode) {
+        visit(astNode.getChild(0)); // Expression
     }
 
     @Override
-    protected SemanticContext visitChrExpression(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
-        context = visit(astNode.getChild(0), context); // Expression
-        return context;
+    protected void visitChrExpression(ASTNode astNode) {
+        visit(astNode.getChild(0)); // Expression
     }
 
     @Override
-    protected SemanticContext visitOrdExpression(ASTNode astNode, SemanticContext inheritedContext) {
-        SemanticContext context = SemanticContext.from(inheritedContext);
-        context = visit(astNode.getChild(0), context); // Expression
-        return context;
+    protected void visitOrdExpression(ASTNode astNode) {
+        visit(astNode.getChild(0)); // Expression
     }
 
     @Override
-    public SemanticContext visitIdentifier(IdentifierNode identifierNode, SemanticContext inheritedContext) {
-        String identifier = identifierNode.getValue();
-        CodeSegment code = CodeSegment.gen(inheritedContext.code, Instruction.LOAD, symbolTable.lookup(identifier));
-        int next = inheritedContext.next + 1;
-        int top = inheritedContext.top + 1;
-        ErrorSegment error = symbolTable.lookup(identifier) == 0
-                ? ErrorSegment.gen(inheritedContext.error, "Identifier un-initialized")
-                : inheritedContext.error;
-
-        return new SemanticContext(code, error, next, top, SemanticType.INTEGER_TYPE);
+    public void visitIdentifier(IdentifierNode identifierNode) {
     }
 }

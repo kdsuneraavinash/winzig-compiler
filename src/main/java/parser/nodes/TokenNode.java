@@ -17,6 +17,14 @@ public class TokenNode implements Node {
         this.value = kind.getValue();
     }
 
+    public TokenKind getKind() {
+        return kind;
+    }
+
+    public String getValue() {
+        return value;
+    }
+
     @Override
     public String toString() {
         return String.format("%s(0)", value);

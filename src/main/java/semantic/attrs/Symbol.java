@@ -6,7 +6,7 @@ public class Symbol {
     private final SemanticType type;
     private final boolean isConstant;
 
-    public Symbol(String name, int position, SemanticType type, boolean isConstant) {
+    private Symbol(String name, int position, SemanticType type, boolean isConstant) {
         this.name = name;
         this.position = position;
         this.type = type;
@@ -27,5 +27,18 @@ public class Symbol {
 
     public boolean isConstant() {
         return isConstant;
+    }
+
+    public static Symbol constant(String name, int position, SemanticType type) {
+        return new Symbol(name, position, type, true);
+    }
+
+    @Override
+    public String toString() {
+        return "Symbol{" +
+                "name='" + name + '\'' +
+                ", type=" + type +
+                ", isConstant=" + isConstant +
+                '}';
     }
 }
