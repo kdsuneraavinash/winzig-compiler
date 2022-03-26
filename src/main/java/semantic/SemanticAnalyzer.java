@@ -13,10 +13,12 @@ import java.util.List;
 
 public class SemanticAnalyzer extends BaseVisitor {
     private Scope scope;
+    private Context context;
     private List<String> error;
     private List<Instruction> code;
 
     public void analyze(ASTNode astNode) {
+        this.context = new Context();
         this.scope = new Scope();
         this.error = new ArrayList<>();
         this.code = new ArrayList<>();
@@ -82,9 +84,9 @@ public class SemanticAnalyzer extends BaseVisitor {
 
         // Define the constant at the top and mark the symbol as constant.
         code.add(new Instruction(InstructionMnemonic.LIT, registerValue));
-        scope.enter(new Symbol(identifier, ++scope.top, SemanticType.CONSTANT));
-        scope.type = SemanticType.DECLARATION;
-        scope.next++;
+        scope.enter(new Symbol(identifier, ++context.top, SemanticType.CONSTANT));
+        context.type = SemanticType.DECLARATION;
+        context.next++;
     }
 
     // ---------------------------------------- Types ------------------------------------------------------------------
@@ -124,6 +126,9 @@ public class SemanticAnalyzer extends BaseVisitor {
         // Create a new scope for the function.
         Scope oldScope = scope;
         scope = new Scope(oldScope);
+        // Set top for the new context.
+        int currentTop = context.top;
+        context.top = 0;
         // Traverse astNodes.
         IdentifierNode functionName = (IdentifierNode) astNode.getChild(0); // Name
         visit(astNode.getChild(1)); // Params
@@ -134,11 +139,10 @@ public class SemanticAnalyzer extends BaseVisitor {
         visit(astNode.getChild(6)); // Body
         visit(astNode.getChild(7)); // Name
         // Save function as a symbol.
-        scope.enter(new Symbol(functionName.getIdentifierValue(), scope.type));
+        scope.enter(new Symbol(functionName.getIdentifierValue(), SemanticType.FUNCTION));
         // Restore the old scope.
-        oldScope.type = SemanticType.FUNCTION;
-        oldScope.next = scope.next;
-        oldScope.top += scope.top;
+        context.type = SemanticType.FUNCTION;
+        context.top = currentTop + context.top;
         scope = oldScope;
     }
 
@@ -182,7 +186,6 @@ public class SemanticAnalyzer extends BaseVisitor {
         }
 
         // Define the variables at the top and mark the symbol as variable.
-        scope.type = SemanticType.VARIABLE;
         for (IdentifierNode identifierNode : identifierNodes) {
             String identifier = identifierNode.getIdentifierValue();
             if (scope.isDefined(identifier, false)) {
@@ -190,8 +193,9 @@ public class SemanticAnalyzer extends BaseVisitor {
                 continue;
             }
             code.add(new Instruction(InstructionMnemonic.LIT, 0));
-            scope.enter(new Symbol(identifier, ++scope.top, scope.type));
-            scope.next++;
+            scope.enter(new Symbol(identifier, ++context.top, SemanticType.VARIABLE));
+            context.next++;
+            context.type = SemanticType.DECLARATION;
         }
     }
 

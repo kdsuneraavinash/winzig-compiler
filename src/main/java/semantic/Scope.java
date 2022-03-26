@@ -10,9 +10,6 @@ import java.util.StringJoiner;
 public class Scope {
     private final Scope parent;
     private final Map<String, Symbol> symbols;
-    public int next;
-    public int top;
-    public SemanticType type;
 
     public Scope() {
         this(null);
