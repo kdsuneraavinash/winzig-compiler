@@ -19,15 +19,16 @@ public class Instruction {
         this.args = args;
     }
 
-    public Label getLabel() {
-        if (this.label == null) this.label = new Label();
-        return this.label;
+    public void attachLabel(Label label) {
+        // If there is a label already, rename new label to match it silently.
+        if (this.label != null) label.setIndex(this.label.getIndex());
+        else this.label = label;
     }
 
     @Override
     public String toString() {
         StringJoiner sj = new StringJoiner(" ");
-        if (label != null) sj.add(label.getLabel());
+        if (label != null) sj.add(label.toString());
         sj.add("\t");
         sj.add(instructionMnemonic.toString());
         for (Object arg : args) sj.add(arg.toString());

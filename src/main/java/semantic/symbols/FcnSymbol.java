@@ -16,6 +16,6 @@ public class FcnSymbol extends Symbol {
 
     @Override
     public String toString() {
-        return String.format("[%s] %s->%s #%s", symbolType, name, returnType.name, label.getLabel());
+        return String.format("[%s] %s->%s #%s", symbolType, name, returnType.name, label);
     }
 }

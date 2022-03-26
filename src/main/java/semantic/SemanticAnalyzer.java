@@ -19,6 +19,7 @@ import semantic.table.SymbolTable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class SemanticAnalyzer extends BaseVisitor {
     private SymbolTable symbolTable;
@@ -35,14 +36,15 @@ public class SemanticAnalyzer extends BaseVisitor {
         error.add(String.format(message, args));
     }
 
-    private Label getLabel(int position) {
+    private void attachLabel(Label label, int position) {
         // Subtracting 1 because position is 1-indexed.
         int zPosition = position - 1;
         if (code.size() <= zPosition) {
             // Add NOP if nothing in the function (?)
             addCode(InstructionMnemonic.NOP);
         }
-        return code.get(zPosition).getLabel();
+        code.get(zPosition).attachLabel(label);
+
     }
 
     private int getNext() {
@@ -177,7 +179,9 @@ public class SemanticAnalyzer extends BaseVisitor {
         visit(astNode.getChild(6)); // Body
         symbolTable.endLocalScope();
         // Add label to function start pos and define function as a symbol.
-        symbolTable.enterFcnSymbol(functionName, getLabel(fcnStart), returnTypeSymbol);
+        Label fcnLabel = new Label();
+        attachLabel(fcnLabel, fcnStart);
+        symbolTable.enterFcnSymbol(functionName, fcnLabel, returnTypeSymbol);
     }
 
     @Override
@@ -268,10 +272,28 @@ public class SemanticAnalyzer extends BaseVisitor {
     @Override
     protected void visitIfStatement(ASTNode astNode) {
         visit(astNode.getChild(0)); // Expression
-        visit(astNode.getChild(1)); // Statement
-        if (astNode.getSize() == 3) { // ?
-            visit(astNode.getChild(2)); // Statement
+        if (!context.expressionType.isBoolean()) {
+            addError("Invalid type for if statement.");
         }
+        Label thenStartLabel = new Label();
+        Label elseStartLabel = astNode.getSize() == 3 ? new Label() : null;
+        Label ifEndLabel = new Label();
+
+        // Evaluate the condition.
+        addCode(InstructionMnemonic.COND, thenStartLabel, Objects.requireNonNullElse(elseStartLabel, ifEndLabel));
+        // Then statement.
+        int thenStart = getNext();
+        visit(astNode.getChild(1)); // Statement
+        addCode(InstructionMnemonic.GOTO, ifEndLabel);
+        attachLabel(thenStartLabel, thenStart);
+        // Else statement.
+        if (elseStartLabel != null) { // ?
+            int elseStart = getNext();
+            visit(astNode.getChild(2)); // Statement
+            attachLabel(elseStartLabel, elseStart);
+        }
+        // End if.
+        attachLabel(ifEndLabel, getNext());
     }
 
     @Override
