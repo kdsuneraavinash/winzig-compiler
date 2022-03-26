@@ -20,8 +20,6 @@ public class SymbolTable {
 
     private final Map<String, Symbol> globalSymbols;
     private final Map<String, Symbol> localSymbols;
-    private int globalTop;
-    private int localTop;
     private boolean isInLocalScope;
 
     public SymbolTable() {
@@ -30,8 +28,6 @@ public class SymbolTable {
         this.globalSymbols.put("char", CHAR_TYPE);
         this.globalSymbols.put("boolean", BOOLEAN_TYPE);
         this.localSymbols = new HashMap<>();
-        this.globalTop = 0;
-        this.localTop = 0;
         this.isInLocalScope = false;
     }
 
@@ -41,7 +37,6 @@ public class SymbolTable {
      */
     public void beginLocalScope() {
         assert !this.isInLocalScope;
-        this.localTop = 0;
         this.localSymbols.clear();
         this.isInLocalScope = true;
     }
@@ -52,7 +47,6 @@ public class SymbolTable {
      */
     public void endLocalScope() {
         assert this.isInLocalScope;
-        this.localTop = 0;
         this.localSymbols.clear();
         this.isInLocalScope = false;
     }
@@ -65,9 +59,10 @@ public class SymbolTable {
      * @param name the name of the variable.
      * @param type the type of the variable.
      */
-    public void enterVariableSymbol(String name, TypeSymbol type) {
-        if (isInLocalScope) localSymbols.put(name, new VariableSymbol(name, type, ++localTop, false));
-        else globalSymbols.put(name, new VariableSymbol(name, type, ++globalTop, true));
+    public void enterVariableSymbol(String name, int address, TypeSymbol type) {
+        VariableSymbol variableSymbol = new VariableSymbol(name, type, address, !isInLocalScope);
+        if (isInLocalScope) localSymbols.put(name, variableSymbol);
+        else globalSymbols.put(name, variableSymbol);
     }
 
     /**
@@ -78,8 +73,9 @@ public class SymbolTable {
      * @param value the value of the constant.
      */
     public void enterConstantSymbol(String name, TypeSymbol type, int value) {
-        if (isInLocalScope) localSymbols.put(name, new ConstantSymbol(name, type, value, false));
-        else globalSymbols.put(name, new ConstantSymbol(name, type, value, true));
+        ConstantSymbol constantSymbol = new ConstantSymbol(name, type, value, !isInLocalScope);
+        if (isInLocalScope) localSymbols.put(name, constantSymbol);
+        else globalSymbols.put(name, constantSymbol);
     }
 
     /**
@@ -88,8 +84,9 @@ public class SymbolTable {
      * @param name the name of the type.
      */
     public void enterTypeSymbol(String name) {
-        if (isInLocalScope) localSymbols.put(name, new TypeSymbol(name, false));
-        else globalSymbols.put(name, new TypeSymbol(name, true));
+        TypeSymbol typeSymbol = new TypeSymbol(name, !isInLocalScope);
+        if (isInLocalScope) localSymbols.put(name, typeSymbol);
+        else globalSymbols.put(name, typeSymbol);
     }
 
     /**
@@ -133,20 +130,9 @@ public class SymbolTable {
         return globalSymbols.containsKey(name);
     }
 
-    public int getTop() {
-        if (isInLocalScope) return localTop;
-        return globalTop;
-    }
-
-    public void increaseTop() {
-        if (isInLocalScope) localTop++;
-        else globalTop++;
-    }
-
     @Override
     public String toString() {
         StringJoiner sj = new StringJoiner("\n");
-        sj.add("Top:     " + globalTop);
         sj.add("Symbols: ");
         globalSymbols.forEach((key, value) -> sj.add("\t" + value));
         return sj.toString();
