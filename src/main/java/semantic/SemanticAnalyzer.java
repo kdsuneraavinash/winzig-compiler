@@ -140,15 +140,30 @@ public class SemanticAnalyzer extends BaseVisitor {
 
     @Override
     protected void visitType(ASTNode astNode) {
-        // TODO: ???
-        visit(astNode.getChild(0)); // Name
+        context.newTypeLits.clear();
+
+        String typeName = ((IdentifierNode) astNode.getChild(0)).getIdentifierValue(); // Name
         visit(astNode.getChild(1)); // ListList
+
+        // Define type and retrieve it to use for constant declaration.
+        symbolTable.enterTypeSymbol(typeName);
+        TypeSymbol typeSymbol = lookupType(typeName);
+        if (typeSymbol == null) return;
+
+        // Define all the values that are assignable to this type as constants.
+        List<String> newVars = context.newTypeLits;
+        for (int i = 0; i < newVars.size(); i++) {
+            String newVar = newVars.get(i);
+            symbolTable.enterConstantSymbol(newVar, typeSymbol, i);
+        }
+
+        context.newTypeLits.clear();
     }
 
     @Override
     protected void visitLit(ASTNode astNode) {
         for (int i = 0; i < astNode.getSize(); i++) { // list
-            visit(astNode.getChild(i)); // Name
+            context.newTypeLits.add(((IdentifierNode) astNode.getChild(i)).getIdentifierValue()); // Name
         }
     }
 
@@ -417,96 +432,64 @@ public class SemanticAnalyzer extends BaseVisitor {
     @Override
     protected void visitLtEqualExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Term
-        TypeSymbol firstType = context.expressionType;
         visit(astNode.getChild(1)); // Term
-        TypeSymbol secondType = context.expressionType;
-        if (isRelationalOperatorDefined(firstType, secondType)) {
-            addCode(InstructionMnemonic.BOP, BinaryOpType.BLE);
-        }
+        addCode(InstructionMnemonic.BOP, BinaryOpType.BLE);
         context.expressionType = SymbolTable.BOOLEAN_TYPE;
     }
 
     @Override
     protected void visitLtExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Term
-        TypeSymbol firstType = context.expressionType;
         visit(astNode.getChild(1)); // Term
-        TypeSymbol secondType = context.expressionType;
-        if (isRelationalOperatorDefined(firstType, secondType)) {
-            addCode(InstructionMnemonic.BOP, BinaryOpType.BLT);
-        }
+        addCode(InstructionMnemonic.BOP, BinaryOpType.BLT);
         context.expressionType = SymbolTable.BOOLEAN_TYPE;
     }
 
     @Override
     protected void visitGtEqualExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Term
-        TypeSymbol firstType = context.expressionType;
         visit(astNode.getChild(1)); // Term
-        TypeSymbol secondType = context.expressionType;
-        if (isRelationalOperatorDefined(firstType, secondType)) {
-            addCode(InstructionMnemonic.BOP, BinaryOpType.BGE);
-        }
+        addCode(InstructionMnemonic.BOP, BinaryOpType.BGE);
         context.expressionType = SymbolTable.BOOLEAN_TYPE;
     }
 
     @Override
     protected void visitGtExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Term
-        TypeSymbol firstType = context.expressionType;
         visit(astNode.getChild(1)); // Term
-        TypeSymbol secondType = context.expressionType;
-        if (isRelationalOperatorDefined(firstType, secondType)) {
-            addCode(InstructionMnemonic.BOP, BinaryOpType.BGT);
-        }
+        addCode(InstructionMnemonic.BOP, BinaryOpType.BGT);
         context.expressionType = SymbolTable.BOOLEAN_TYPE;
     }
 
     @Override
     protected void visitEqualsExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Term
-        TypeSymbol firstType = context.expressionType;
         visit(astNode.getChild(1)); // Term
-        TypeSymbol secondType = context.expressionType;
-        if (isRelationalOperatorDefined(firstType, secondType)) {
-            addCode(InstructionMnemonic.BOP, BinaryOpType.BEQ);
-        }
+        addCode(InstructionMnemonic.BOP, BinaryOpType.BEQ);
         context.expressionType = SymbolTable.BOOLEAN_TYPE;
     }
 
     @Override
     protected void visitNotEqualsExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Term
-        TypeSymbol firstType = context.expressionType;
         visit(astNode.getChild(1)); // Term
-        TypeSymbol secondType = context.expressionType;
-        if (isRelationalOperatorDefined(firstType, secondType)) {
-            addCode(InstructionMnemonic.BOP, BinaryOpType.BNE);
-        }
+        addCode(InstructionMnemonic.BOP, BinaryOpType.BNE);
         context.expressionType = SymbolTable.BOOLEAN_TYPE;
     }
 
     @Override
     protected void visitAddExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Term
-        TypeSymbol firstType = context.expressionType;
         visit(astNode.getChild(1)); // Term
-        TypeSymbol secondType = context.expressionType;
-        if (isArithmeticOperatorDefined(firstType, secondType)) {
-            addCode(InstructionMnemonic.BOP, BinaryOpType.BPLUS);
-        }
+        addCode(InstructionMnemonic.BOP, BinaryOpType.BPLUS);
         context.expressionType = SymbolTable.INTEGER_TYPE;
     }
 
     @Override
     protected void visitSubtractExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Term
-        TypeSymbol firstType = context.expressionType;
         visit(astNode.getChild(1)); // Term
-        TypeSymbol secondType = context.expressionType;
-        if (isArithmeticOperatorDefined(firstType, secondType)) {
-            addCode(InstructionMnemonic.BOP, BinaryOpType.BMINUS);
-        }
+        addCode(InstructionMnemonic.BOP, BinaryOpType.BMINUS);
         context.expressionType = SymbolTable.INTEGER_TYPE;
     }
 
@@ -525,24 +508,16 @@ public class SemanticAnalyzer extends BaseVisitor {
     @Override
     protected void visitMultiplyExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Term
-        TypeSymbol firstType = context.expressionType;
         visit(astNode.getChild(1)); // Term
-        TypeSymbol secondType = context.expressionType;
-        if (isArithmeticOperatorDefined(firstType, secondType)) {
-            addCode(InstructionMnemonic.BOP, BinaryOpType.BMULT);
-        }
+        addCode(InstructionMnemonic.BOP, BinaryOpType.BMULT);
         context.expressionType = SymbolTable.INTEGER_TYPE;
     }
 
     @Override
     protected void visitDivideExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Term
-        TypeSymbol firstType = context.expressionType;
         visit(astNode.getChild(1)); // Term
-        TypeSymbol secondType = context.expressionType;
-        if (isArithmeticOperatorDefined(firstType, secondType)) {
-            addCode(InstructionMnemonic.BOP, BinaryOpType.BDIV);
-        }
+        addCode(InstructionMnemonic.BOP, BinaryOpType.BDIV);
         context.expressionType = SymbolTable.INTEGER_TYPE;
     }
 
@@ -561,12 +536,8 @@ public class SemanticAnalyzer extends BaseVisitor {
     @Override
     protected void visitModExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Term
-        TypeSymbol firstType = context.expressionType;
         visit(astNode.getChild(1)); // Term
-        TypeSymbol secondType = context.expressionType;
-        if (isArithmeticOperatorDefined(firstType, secondType)) {
-            addCode(InstructionMnemonic.BOP, BinaryOpType.BMOD);
-        }
+        addCode(InstructionMnemonic.BOP, BinaryOpType.BMOD);
         context.expressionType = SymbolTable.INTEGER_TYPE;
     }
 
@@ -680,43 +651,30 @@ public class SemanticAnalyzer extends BaseVisitor {
         return false;
     }
 
-    private boolean isRelationalOperatorDefined(TypeSymbol firstType, TypeSymbol secondType) {
-        boolean isDefined = (firstType.isInteger() || firstType.isChar()) &&
-                (secondType.isInteger() || secondType.isChar());
-        if (!isDefined) addError("Invalid types for relational operator. Requires either 'int' or 'char'.");
-        return isDefined;
-    }
-
-    private boolean isArithmeticOperatorDefined(TypeSymbol firstType, TypeSymbol secondType) {
-        boolean isDefined = (firstType.isInteger() && secondType.isChar()) ||
-                (firstType.isInteger() && secondType.isInteger()) ||
-                (firstType.isChar() && secondType.isInteger());
-        if (!isDefined)
-            addError("Invalid types for arithmetic operator. Requires either 'int' or 'char'. Both cannot be 'char' as well.");
-        return isDefined;
-    }
-
     private boolean isLogicalOperatorDefined(TypeSymbol firstType, TypeSymbol secondType) {
         boolean isDefined = firstType.isBoolean() && secondType.isBoolean();
-        if (!isDefined) addError("Invalid types for logical operator. Requires 'boolean'.");
+        if (!isDefined) addError("Invalid types for logical operator. " +
+                "Requires 'boolean'. Found '%s' and '%s'.", firstType.name, secondType.name);
         return isDefined;
     }
 
     private boolean isBooleanOperatorDefined(TypeSymbol typeSymbol) {
         boolean isDefined = typeSymbol.isBoolean();
-        if (!isDefined) addError("Invalid type for boolean operator. Requires 'boolean'.");
+        if (!isDefined) addError("Invalid type for boolean operator. Requires 'boolean'. Found '%s'.",
+                typeSymbol.name);
         return isDefined;
     }
 
     private boolean isNumericOperatorDefined(TypeSymbol typeSymbol) {
         boolean isDefined = typeSymbol.isInteger();
-        if (!isDefined) addError("Invalid type for numeric operator. Requires 'boolean'.");
+        if (!isDefined) addError("Invalid type for numeric operator. Requires 'integer'. Found '%s'.",
+                typeSymbol.name);
         return isDefined;
     }
 
     private boolean isSuccPredOperatorDefined(TypeSymbol typeSymbol) {
-        boolean isDefined = typeSymbol.isInteger() || typeSymbol.isChar();
-        if (!isDefined) addError("Invalid type for succ/pred operator. Requires 'boolean'.");
+        boolean isDefined = typeSymbol.isInteger() || typeSymbol.isChar() || typeSymbol.isCustom();
+        if (!isDefined) addError("Invalid type for succ/pred operations. Found '%s'.", typeSymbol.name);
         return isDefined;
     }
 

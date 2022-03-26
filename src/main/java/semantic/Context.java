@@ -9,9 +9,11 @@ import java.util.List;
 public class Context {
     public TypeSymbol expressionType;
     public List<String> newVars;
+    public List<String> newTypeLits;
 
     public Context() {
         expressionType = SymbolTable.UNDEFINED_TYPE;
         newVars = new ArrayList<>();
+        newTypeLits = new ArrayList<>();
     }
 }

@@ -4,6 +4,7 @@ import semantic.attrs.SymbolType;
 import semantic.table.SymbolTable;
 
 public class TypeSymbol extends Symbol {
+
     public TypeSymbol(String name, boolean isGlobal) {
         super(name, SymbolType.TYPE, isGlobal);
     }
@@ -23,5 +24,9 @@ public class TypeSymbol extends Symbol {
 
     public boolean isBoolean() {
         return equals(SymbolTable.BOOLEAN_TYPE);
+    }
+
+    public boolean isCustom() {
+        return !isInteger() && !isChar() && !isBoolean();
     }
 }
