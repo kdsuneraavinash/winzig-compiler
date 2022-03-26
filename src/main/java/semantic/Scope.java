@@ -24,9 +24,9 @@ public class Scope {
     public Scope(Scope parent) {
         this.parent = parent;
         symbols = new HashMap<>();
-        this.next = 1;
+        this.next = (parent != null) ? parent.next : 1;
         this.top = 0;
-        this.type = SemanticType.UNKNOWN;
+        this.type = SemanticType.UNDEFINED;
     }
 
     /**
@@ -57,8 +57,19 @@ public class Scope {
      * @return True if the symbol is in the current scope.
      */
     public boolean isDefined(String name) {
+        return isDefined(name, true);
+    }
+
+    /**
+     * Check if a symbol is in the current scope.
+     *
+     * @param name        Symbol name.
+     * @param checkParent If true, check the parent scope.
+     * @return True if the symbol is in the current scope.
+     */
+    public boolean isDefined(String name, boolean checkParent) {
         if (symbols.containsKey(name)) return true;
-        if (parent != null) return parent.isDefined(name);
+        if (checkParent && parent != null) return parent.isDefined(name);
         return false;
     }
 

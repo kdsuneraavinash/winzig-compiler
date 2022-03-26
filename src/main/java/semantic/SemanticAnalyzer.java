@@ -22,7 +22,9 @@ public class SemanticAnalyzer extends BaseVisitor {
         this.code = new ArrayList<>();
         visit(astNode);
         System.out.println("----------------------------------------------------");
-        System.out.println(String.join("\n", error));
+        for (String line : this.error) {
+            System.out.println(line);
+        }
         System.out.println("----------------------------------------------------");
         for (Instruction line : this.code) {
             System.out.println(line);
@@ -30,6 +32,8 @@ public class SemanticAnalyzer extends BaseVisitor {
         System.out.println("----------------------------------------------------");
         System.out.println(this.scope);
     }
+
+    // ---------------------------------------- Program ----------------------------------------------------------------
 
     @Override
     protected void visitProgram(ASTNode astNode) {
@@ -41,6 +45,8 @@ public class SemanticAnalyzer extends BaseVisitor {
         visit(astNode.getChild(5)); // Body
         visit(astNode.getChild(6)); // Name
     }
+
+    // ---------------------------------------- Consts -----------------------------------------------------------------
 
     @Override
     protected void visitConsts(ASTNode astNode) {
@@ -57,8 +63,8 @@ public class SemanticAnalyzer extends BaseVisitor {
         String value = valueNode.getIdentifierValue();
         TokenKind tokenKind = valueNode.getKind();
 
-        // Constants cannot be defined twice, even if they have in nested scopes.
-        if (scope.isDefined(identifier)) {
+        // Constants cannot be defined twice in the same scope.
+        if (scope.isDefined(identifier, false)) {
             error.add("Variable already defined: " + identifier);
             return;
         }
@@ -75,11 +81,13 @@ public class SemanticAnalyzer extends BaseVisitor {
         }
 
         // Define the constant at the top and mark the symbol as constant.
-        scope.type = SemanticType.CONSTANT;
         code.add(new Instruction(InstructionMnemonic.LIT, registerValue));
-        scope.enter(new Symbol(identifier, ++scope.top, scope.type));
+        scope.enter(new Symbol(identifier, ++scope.top, SemanticType.CONSTANT));
+        scope.type = SemanticType.DECLARATION;
         scope.next++;
     }
+
+    // ---------------------------------------- Types ------------------------------------------------------------------
 
     @Override
     protected void visitTypes(ASTNode astNode) {
@@ -102,6 +110,8 @@ public class SemanticAnalyzer extends BaseVisitor {
         }
     }
 
+    // ---------------------------------------- SubProgs ---------------------------------------------------------------
+
     @Override
     protected void visitSubprogs(ASTNode astNode) {
         for (int i = 0; i < astNode.getSize(); i++) { // *
@@ -111,7 +121,11 @@ public class SemanticAnalyzer extends BaseVisitor {
 
     @Override
     protected void visitFcn(ASTNode astNode) {
-        visit(astNode.getChild(0)); // Name
+        // Create a new scope for the function.
+        Scope oldScope = scope;
+        scope = new Scope(oldScope);
+        // Traverse astNodes.
+        IdentifierNode functionName = (IdentifierNode) astNode.getChild(0); // Name
         visit(astNode.getChild(1)); // Params
         visit(astNode.getChild(2)); // Name
         visit(astNode.getChild(3)); // Consts
@@ -119,14 +133,25 @@ public class SemanticAnalyzer extends BaseVisitor {
         visit(astNode.getChild(5)); // Dclns
         visit(astNode.getChild(6)); // Body
         visit(astNode.getChild(7)); // Name
+        // Save function as a symbol.
+        scope.enter(new Symbol(functionName.getIdentifierValue(), scope.type));
+        // Restore the old scope.
+        oldScope.type = SemanticType.FUNCTION;
+        oldScope.next = scope.next;
+        oldScope.top += scope.top;
+        scope = oldScope;
     }
 
     @Override
     protected void visitParams(ASTNode astNode) {
+        // Parameter for each function incoming variable.
         for (int i = 0; i < astNode.getSize(); i++) { // list
+
             visit(astNode.getChild(i)); // Dcln
         }
     }
+
+    // ---------------------------------------- Dcln -------------------------------------------------------------------
 
     @Override
     protected void visitDclns(ASTNode astNode) {
@@ -160,16 +185,17 @@ public class SemanticAnalyzer extends BaseVisitor {
         scope.type = SemanticType.VARIABLE;
         for (IdentifierNode identifierNode : identifierNodes) {
             String identifier = identifierNode.getIdentifierValue();
-            if (scope.isDefined(identifier)) {
-                // TODO: Does not handle multiple variables with the same name even even if on a top scope.
-                error.add("Variable " + identifier + " already defined.");
+            if (scope.isDefined(identifier, false)) {
+                error.add("Variable " + identifier + " already defined in the current scope.");
                 continue;
             }
-            code.add(new Instruction(InstructionMnemonic.LIT, "0"));
+            code.add(new Instruction(InstructionMnemonic.LIT, 0));
             scope.enter(new Symbol(identifier, ++scope.top, scope.type));
             scope.next++;
         }
     }
+
+    // ---------------------------------------- Statements -------------------------------------------------------------
 
     @Override
     protected void visitBlock(ASTNode astNode) {
