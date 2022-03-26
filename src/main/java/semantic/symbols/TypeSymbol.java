@@ -1,14 +1,14 @@
 package semantic.symbols;
 
-import semantic.attrs.SemanticType;
+import semantic.attrs.SymbolType;
 
 public class TypeSymbol extends Symbol {
-    public TypeSymbol(String name) {
-        super(name, SemanticType.TYPE);
+    public TypeSymbol(String name, boolean isGlobal) {
+        super(name, SymbolType.TYPE, isGlobal);
     }
 
     @Override
     public String toString() {
-        return "[" + getSymbolType() + "] " + getName();
+        return String.format("[%s] %s", symbolType, name);
     }
 }

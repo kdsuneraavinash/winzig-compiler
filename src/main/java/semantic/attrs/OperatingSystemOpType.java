@@ -4,6 +4,7 @@ public enum OperatingSystemOpType {
     TRACEX("TRACEX"), // Trace_Execution <- not TraceExecution
     DUMPMEM("DUMPMEM"), // Dump_Memory
     INPUT("INPUT"), // readln(i); Push i on Lf
+    INPUTC("INPUTC"), // readln(ch); Push Ord(ch) on Lf
     OUTPUT("OUTPUT"), // write (Pop Lf)
     OUTPUTC("OUTPUTC"), // write (Chr(Pop(Lf)))
     OUTPUTL("OUTPUTL"), // writeln

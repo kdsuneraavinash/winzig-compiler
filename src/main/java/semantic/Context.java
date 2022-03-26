@@ -1,18 +1,16 @@
 package semantic;
 
-import semantic.attrs.SemanticType;
+import semantic.symbols.TypeSymbol;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class Context {
-    public int top;
-    public SemanticType type;
+    public TypeSymbol expressionType;
     public List<String> newVars;
 
     public Context() {
-        top = 0;
-        type = SemanticType.UNDEFINED;
+        expressionType = null;
         newVars = new ArrayList<>();
     }
 }

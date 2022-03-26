@@ -3,14 +3,18 @@ package semantic;
 import lexer.tokens.TokenKind;
 import parser.nodes.ASTNode;
 import parser.nodes.IdentifierNode;
+import parser.nodes.Node;
+import semantic.attrs.BinaryOpType;
 import semantic.attrs.Instruction;
 import semantic.attrs.InstructionMnemonic;
 import semantic.attrs.Label;
-import semantic.attrs.SemanticType;
+import semantic.attrs.OperatingSystemOpType;
 import semantic.symbols.ConstantSymbol;
+import semantic.symbols.FcnSymbol;
 import semantic.symbols.Symbol;
 import semantic.symbols.TypeSymbol;
 import semantic.symbols.VariableSymbol;
+import semantic.table.SymbolTable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -69,11 +73,7 @@ public class SemanticAnalyzer extends BaseVisitor {
     @Override
     protected void visitProgram(ASTNode astNode) {
         String programName = ((IdentifierNode) astNode.getChild(0)).getIdentifierValue(); // Name
-        String programName2 = ((IdentifierNode) astNode.getChild(6)).getIdentifierValue(); // Name
-        if (!programName.equals(programName2)) {
-            addError("Program name of '%s' does not have a proper end.", programName);
-            return;
-        }
+        if (doesEndTokenMismatch(programName, astNode.getChild(6))) return;
 
         visit(astNode.getChild(1)); // Consts
         visit(astNode.getChild(2)); // Types
@@ -89,13 +89,13 @@ public class SemanticAnalyzer extends BaseVisitor {
         for (int i = 0; i < astNode.getSize(); i++) { // list
             visit(astNode.getChild(i)); // Const
         }
-        context.type = SemanticType.DECLARATION;
     }
 
     @Override
     protected void visitConst(ASTNode astNode) {
         IdentifierNode identifierNode = (IdentifierNode) astNode.getChild(0); // Name
         IdentifierNode valueNode = (IdentifierNode) astNode.getChild(1); // ConstValue
+
         String identifier = identifierNode.getIdentifierValue();
         String value = valueNode.getIdentifierValue();
         TokenKind tokenKind = valueNode.getKind();
@@ -107,29 +107,23 @@ public class SemanticAnalyzer extends BaseVisitor {
         }
 
         // Supports char/int literals only. Each is stored as integer regardless of type.
-        int registerValue;
-        TypeSymbol typeSymbol;
+        int constantValue;
+        TypeSymbol constantType;
         if (tokenKind == TokenKind.CHAR_LITERAL) {
-            registerValue = value.codePointAt(1);
-            typeSymbol = (TypeSymbol) symbolTable.lookup("char");
+            constantValue = value.codePointAt(1);
+            constantType = SymbolTable.CHAR_TYPE;
         } else if (tokenKind == TokenKind.INTEGER_LITERAL) {
-            registerValue = Integer.parseInt(value);
-            typeSymbol = (TypeSymbol) symbolTable.lookup("integer");
+            constantValue = Integer.parseInt(value);
+            constantType = SymbolTable.INTEGER_TYPE;
         } else {
-            Symbol constSymbol = symbolTable.lookup(value);
-            if (constSymbol == null) {
-                addError("Constant declaration points to undefined %s", value);
-                return;
-            }
-            if (!(constSymbol instanceof ConstantSymbol)) {
-                addError("Type mismatched. expected int/char/const, found %s", constSymbol.getSymbolType());
-                return;
-            }
-            registerValue = ((ConstantSymbol) constSymbol).getValue();
-            typeSymbol = ((ConstantSymbol) constSymbol).getType();
+            // Constant is defined using another constant.
+            ConstantSymbol constSymbol = lookupConstant(value);
+            if (constSymbol == null) return;
+            constantValue = constSymbol.value;
+            constantType = constSymbol.type;
         }
 
-        symbolTable.enterConstSymbol(identifier, typeSymbol, registerValue);
+        symbolTable.enterConstantSymbol(identifier, constantType, constantValue);
     }
 
     // ---------------------------------------- Types ------------------------------------------------------------------
@@ -166,39 +160,23 @@ public class SemanticAnalyzer extends BaseVisitor {
 
     @Override
     protected void visitFcn(ASTNode astNode) {
-        // Process the function.
         String functionName = ((IdentifierNode) astNode.getChild(0)).getIdentifierValue(); // Name
-        String functionName2 = ((IdentifierNode) astNode.getChild(7)).getIdentifierValue(); // Name
-        IdentifierNode returnTypeNode = (IdentifierNode) astNode.getChild(2); // Name
+        String returnTypeName = ((IdentifierNode) astNode.getChild(2)).getIdentifierValue(); // Name
+        if (doesEndTokenMismatch(functionName, astNode.getChild(7))) return;
 
-        if (!functionName.equals(functionName2)) {
-            addError("Function name of '%s' does not have a proper end.", functionName);
-            return;
-        }
-        Symbol returnTypeSymbol = symbolTable.lookup(returnTypeNode.getIdentifierValue());
-        if (returnTypeSymbol == null) {
-            addError("Function return type '%s' is not defined.", returnTypeNode.getIdentifierValue());
-            return;
-        }
-        if (!(returnTypeSymbol instanceof TypeSymbol)) {
-            addError("Expected function return type to be a TYPE, but found %s.", returnTypeSymbol.getSymbolType());
-            return;
-        }
+        TypeSymbol returnTypeSymbol = lookupType(returnTypeName);
+        if (returnTypeSymbol == null) return;
 
-        // Load local context
-        int globalTop = symbolTable.startLocal();
+        symbolTable.beginLocalScope();
         int fcnStart = getNext();
         visit(astNode.getChild(1)); // Params
         visit(astNode.getChild(3)); // Consts
         visit(astNode.getChild(4)); // Types
         visit(astNode.getChild(5)); // Dclns
         visit(astNode.getChild(6)); // Body
-
-        // Load global context
-        symbolTable.endLocal(globalTop);
+        symbolTable.endLocalScope();
         // Add label to function start pos and define function as a symbol.
-        symbolTable.enterFcnSymbol(functionName, getLabel(fcnStart), (TypeSymbol) returnTypeSymbol);
-        context.type = SemanticType.DECLARATION;
+        symbolTable.enterFcnSymbol(functionName, getLabel(fcnStart), returnTypeSymbol);
     }
 
     @Override
@@ -210,14 +188,12 @@ public class SemanticAnalyzer extends BaseVisitor {
         }
         // Generate code for the new parameters.
         // All parameters are loaded from local frame.
-        List<String> newVars = context.newVars;
-        for (String identifier : newVars) {
-            Symbol newVarSymbol = symbolTable.lookup(identifier);
-            if (!(newVarSymbol instanceof VariableSymbol)) continue;
-            addCode(InstructionMnemonic.LLV, ((VariableSymbol) newVarSymbol).getPosition());
+        for (String identifier : context.newVars) {
+            VariableSymbol newVarSymbol = lookupVariable(identifier);
+            if (newVarSymbol == null) continue;
+            addCode(InstructionMnemonic.LLV, newVarSymbol.address);
         }
         context.newVars.clear();
-        context.type = SemanticType.DECLARATION;
     }
 
     // ---------------------------------------- Dcln -------------------------------------------------------------------
@@ -232,10 +208,11 @@ public class SemanticAnalyzer extends BaseVisitor {
         // Generate code for the new variables.
         // All dclns are treated as new variables initialized with 0.
         for (String identifier : context.newVars) {
+            VariableSymbol newVarSymbol = lookupVariable(identifier);
+            if (newVarSymbol == null) continue;
             addCode(InstructionMnemonic.LIT, 0);
         }
         context.newVars.clear();
-        context.type = SemanticType.DECLARATION;
     }
 
     @Override
@@ -248,26 +225,18 @@ public class SemanticAnalyzer extends BaseVisitor {
         String type = typeNode.getIdentifierValue();
 
         // The data type should be defined first.
-        Symbol typeSymbol = symbolTable.lookup(type);
-        if (typeSymbol == null) {
-            addError("'%s' type is not not defined", type);
-            return;
-        }
-        // The data should be of 'TYPE' type.
-        if (!(typeSymbol instanceof TypeSymbol)) {
-            addError("Expected '%s' to be a type, but was a %s", type, typeSymbol.getSymbolType());
-            return;
-        }
+        TypeSymbol typeSymbol = lookupType(type);
+        if (typeSymbol == null) return;
 
-        // Synthesize all the new variable names.
+        // Define new variables in the symbol table.
         for (IdentifierNode identifierNode : identifierNodes) {
             String identifier = identifierNode.getIdentifierValue();
             if (symbolTable.alreadyDefinedInScope(identifier)) {
                 addError("Variable '%s' already defined.", identifier);
                 continue;
             }
-            symbolTable.enterVarSymbol(identifier, (TypeSymbol) typeSymbol);
-            context.newVars.add(identifierNode.getIdentifierValue());
+            symbolTable.enterVariableSymbol(identifier, typeSymbol);
+            context.newVars.add(identifier);
         }
     }
 
@@ -284,7 +253,15 @@ public class SemanticAnalyzer extends BaseVisitor {
     protected void visitOutputStatement(ASTNode astNode) {
         for (int i = 0; i < astNode.getSize(); i++) { // list
             visit(astNode.getChild(i)); // OutExp
+            if (SymbolTable.INTEGER_TYPE.equals(context.expressionType)) {
+                addCode(InstructionMnemonic.SOS, OperatingSystemOpType.OUTPUT);
+            } else if (SymbolTable.CHAR_TYPE.equals(context.expressionType)) {
+                addCode(InstructionMnemonic.SOS, OperatingSystemOpType.OUTPUTC);
+            } else {
+                addError("Invalid type for output statement.");
+            }
         }
+        addCode(InstructionMnemonic.SOS, OperatingSystemOpType.OUTPUTL);
     }
 
     @Override
@@ -337,7 +314,22 @@ public class SemanticAnalyzer extends BaseVisitor {
     @Override
     protected void visitReadStatement(ASTNode astNode) {
         for (int i = 0; i < astNode.getSize(); i++) { // list
-            visit(astNode.getChild(i)); // Name
+            if (SymbolTable.INTEGER_TYPE.equals(context.expressionType)) {
+                addCode(InstructionMnemonic.SOS, OperatingSystemOpType.INPUT);
+            } else if (SymbolTable.CHAR_TYPE.equals(context.expressionType)) {
+                addCode(InstructionMnemonic.SOS, OperatingSystemOpType.INPUTC);
+            } else {
+                addError("Invalid type for read statement.");
+                continue;
+            }
+            String identifier = ((IdentifierNode) astNode.getChild(i)).getIdentifierValue();
+            VariableSymbol variableSymbol = lookupVariable(identifier);
+            if (variableSymbol == null) continue;
+            if (variableSymbol.isGlobal) {
+                addCode(InstructionMnemonic.SGV, variableSymbol.address);
+            } else {
+                addCode(InstructionMnemonic.SLV, variableSymbol.address);
+            }
         }
     }
 
@@ -402,84 +394,163 @@ public class SemanticAnalyzer extends BaseVisitor {
     @Override
     protected void visitLtEqualExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Term
+        TypeSymbol firstType = context.expressionType;
         visit(astNode.getChild(1)); // Term
+        TypeSymbol secondType = context.expressionType;
+        if (isRelationalOperatorDefined(firstType, secondType)) {
+            addCode(InstructionMnemonic.BOP, BinaryOpType.BLE);
+        }
+        context.expressionType = SymbolTable.BOOLEAN_TYPE;
     }
 
     @Override
     protected void visitLtExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Term
+        TypeSymbol firstType = context.expressionType;
         visit(astNode.getChild(1)); // Term
+        TypeSymbol secondType = context.expressionType;
+        if (isRelationalOperatorDefined(firstType, secondType)) {
+            addCode(InstructionMnemonic.BOP, BinaryOpType.BLT);
+        }
+        context.expressionType = SymbolTable.BOOLEAN_TYPE;
     }
 
     @Override
     protected void visitGtEqualExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Term
+        TypeSymbol firstType = context.expressionType;
         visit(astNode.getChild(1)); // Term
+        TypeSymbol secondType = context.expressionType;
+        if (isRelationalOperatorDefined(firstType, secondType)) {
+            addCode(InstructionMnemonic.BOP, BinaryOpType.BGE);
+        }
+        context.expressionType = SymbolTable.BOOLEAN_TYPE;
     }
 
     @Override
     protected void visitGtExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Term
+        TypeSymbol firstType = context.expressionType;
         visit(astNode.getChild(1)); // Term
+        TypeSymbol secondType = context.expressionType;
+        if (isRelationalOperatorDefined(firstType, secondType)) {
+            addCode(InstructionMnemonic.BOP, BinaryOpType.BGT);
+        }
+        context.expressionType = SymbolTable.BOOLEAN_TYPE;
     }
 
     @Override
     protected void visitEqualsExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Term
+        TypeSymbol firstType = context.expressionType;
         visit(astNode.getChild(1)); // Term
+        TypeSymbol secondType = context.expressionType;
+        if (isRelationalOperatorDefined(firstType, secondType)) {
+            addCode(InstructionMnemonic.BOP, BinaryOpType.BEQ);
+        }
+        context.expressionType = SymbolTable.BOOLEAN_TYPE;
     }
 
     @Override
     protected void visitNotEqualsExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Term
+        TypeSymbol firstType = context.expressionType;
         visit(astNode.getChild(1)); // Term
+        TypeSymbol secondType = context.expressionType;
+        if (isRelationalOperatorDefined(firstType, secondType)) {
+            addCode(InstructionMnemonic.BOP, BinaryOpType.BNE);
+        }
+        context.expressionType = SymbolTable.BOOLEAN_TYPE;
     }
 
     @Override
     protected void visitAddExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Term
-        visit(astNode.getChild(1)); // Factor
+        TypeSymbol firstType = context.expressionType;
+        visit(astNode.getChild(1)); // Term
+        TypeSymbol secondType = context.expressionType;
+        if (isArithmeticOperatorDefined(firstType, secondType)) {
+            addCode(InstructionMnemonic.BOP, BinaryOpType.BPLUS);
+        }
+        context.expressionType = SymbolTable.INTEGER_TYPE;
     }
 
     @Override
     protected void visitSubtractExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Term
-        visit(astNode.getChild(1)); // Factor
+        TypeSymbol firstType = context.expressionType;
+        visit(astNode.getChild(1)); // Term
+        TypeSymbol secondType = context.expressionType;
+        if (isArithmeticOperatorDefined(firstType, secondType)) {
+            addCode(InstructionMnemonic.BOP, BinaryOpType.BMINUS);
+        }
+        context.expressionType = SymbolTable.INTEGER_TYPE;
     }
 
     @Override
     protected void visitOrExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Term
-        visit(astNode.getChild(1)); // Factor
+        TypeSymbol firstType = context.expressionType;
+        visit(astNode.getChild(1)); // Term
+        TypeSymbol secondType = context.expressionType;
+        if (isLogicalOperatorDefined(firstType, secondType)) {
+            addCode(InstructionMnemonic.BOP, BinaryOpType.BOR);
+        }
+        context.expressionType = SymbolTable.BOOLEAN_TYPE;
     }
 
     @Override
     protected void visitMultiplyExpression(ASTNode astNode) {
-        visit(astNode.getChild(0)); // Factor
-        visit(astNode.getChild(1)); // Primary
+        visit(astNode.getChild(0)); // Term
+        TypeSymbol firstType = context.expressionType;
+        visit(astNode.getChild(1)); // Term
+        TypeSymbol secondType = context.expressionType;
+        if (isArithmeticOperatorDefined(firstType, secondType)) {
+            addCode(InstructionMnemonic.BOP, BinaryOpType.BMULT);
+        }
+        context.expressionType = SymbolTable.INTEGER_TYPE;
     }
 
     @Override
     protected void visitDivideExpression(ASTNode astNode) {
-        visit(astNode.getChild(0)); // Factor
-        visit(astNode.getChild(1)); // Primary
+        visit(astNode.getChild(0)); // Term
+        TypeSymbol firstType = context.expressionType;
+        visit(astNode.getChild(1)); // Term
+        TypeSymbol secondType = context.expressionType;
+        if (isArithmeticOperatorDefined(firstType, secondType)) {
+            addCode(InstructionMnemonic.BOP, BinaryOpType.BDIV);
+        }
+        context.expressionType = SymbolTable.INTEGER_TYPE;
     }
 
     @Override
     protected void visitAndExpression(ASTNode astNode) {
-        visit(astNode.getChild(0)); // Factor
-        visit(astNode.getChild(1)); // Primary
+        visit(astNode.getChild(0)); // Term
+        TypeSymbol firstType = context.expressionType;
+        visit(astNode.getChild(1)); // Term
+        TypeSymbol secondType = context.expressionType;
+        if (isLogicalOperatorDefined(firstType, secondType)) {
+            addCode(InstructionMnemonic.BOP, BinaryOpType.BAND);
+        }
+        context.expressionType = SymbolTable.BOOLEAN_TYPE;
     }
 
     @Override
     protected void visitModExpression(ASTNode astNode) {
-        visit(astNode.getChild(0)); // Factor
-        visit(astNode.getChild(1)); // Primary
+        visit(astNode.getChild(0)); // Term
+        TypeSymbol firstType = context.expressionType;
+        visit(astNode.getChild(1)); // Term
+        TypeSymbol secondType = context.expressionType;
+        if (isArithmeticOperatorDefined(firstType, secondType)) {
+            addCode(InstructionMnemonic.BOP, BinaryOpType.BMOD);
+        }
+        context.expressionType = SymbolTable.INTEGER_TYPE;
     }
 
     @Override
     protected void visitNegativeExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Primary
+        addCode(InstructionMnemonic.UOP, BinaryOpType.BMOD);
     }
 
     @Override
@@ -521,21 +592,99 @@ public class SemanticAnalyzer extends BaseVisitor {
 
     @Override
     public void visitIdentifier(IdentifierNode identifierNode) {
+        // Simple literals.
+        if (TokenKind.CHAR_LITERAL.equals(identifierNode.getKind())) {
+            addCode(InstructionMnemonic.LIT, identifierNode.getIdentifierValue().codePointAt(1));
+            context.expressionType = SymbolTable.CHAR_TYPE;
+            return;
+        }
+        if (TokenKind.INTEGER_LITERAL.equals(identifierNode.getKind())) {
+            addCode(InstructionMnemonic.LIT, Integer.parseInt(identifierNode.getIdentifierValue()));
+            context.expressionType = SymbolTable.INTEGER_TYPE;
+            return;
+        }
+
         Symbol symbol = symbolTable.lookup(identifierNode.getIdentifierValue());
-        if (symbol == null) {
-            addError("Variable '%s' is not defined.", identifierNode.getIdentifierValue());
+        // Variables are handled depending on whether they are global or local.
+        if (symbol instanceof VariableSymbol) {
+            VariableSymbol variableSymbol = (VariableSymbol) symbol;
+            if (variableSymbol.isGlobal) {
+                addCode(InstructionMnemonic.LGV, variableSymbol.address);
+            } else {
+                addCode(InstructionMnemonic.LLV, variableSymbol.address);
+            }
+            context.expressionType = variableSymbol.type;
             return;
         }
-        if (!(symbol instanceof VariableSymbol)) {
-            addError("Expected variable, but found %s", symbol.getSymbolType());
+        // Constants are simply loaded to the stack.
+        if (symbol instanceof ConstantSymbol) {
+            ConstantSymbol constantSymbol = (ConstantSymbol) symbol;
+            addCode(InstructionMnemonic.LIT, constantSymbol.value);
+            context.expressionType = constantSymbol.type;
             return;
         }
-        VariableSymbol variableSymbol = (VariableSymbol) symbol;
-        if (variableSymbol.isGlobal()) {
-            addCode(InstructionMnemonic.LGV, variableSymbol.getPosition());
-        } else {
-            addCode(InstructionMnemonic.LLV, variableSymbol.getPosition());
+        addError("Identifier '%s' is not defined.", identifierNode.getIdentifierValue());
+    }
+
+    // -----------------------------------------------------------------------------------------------------------------
+
+    private boolean doesEndTokenMismatch(String name, Node endNode) {
+        if (!name.equals(((IdentifierNode) endNode).getIdentifierValue())) {
+            addError("Begin and end clauses have mismatching names.", name);
+            return true;
         }
-        context.type = SemanticType.VARIABLE;
+        return false;
+    }
+
+    private boolean isRelationalOperatorDefined(TypeSymbol firstType, TypeSymbol secondType) {
+        boolean isDefined = (firstType == SymbolTable.INTEGER_TYPE || firstType == SymbolTable.CHAR_TYPE) &&
+                (secondType == SymbolTable.INTEGER_TYPE || secondType == SymbolTable.CHAR_TYPE);
+        if (!isDefined) addError("Invalid types for relational operator. Requires either 'int' or 'char'.");
+        return isDefined;
+    }
+
+    private boolean isArithmeticOperatorDefined(TypeSymbol firstType, TypeSymbol secondType) {
+        boolean isDefined = (firstType == SymbolTable.INTEGER_TYPE && secondType == SymbolTable.CHAR_TYPE) ||
+                (firstType == SymbolTable.INTEGER_TYPE && secondType == SymbolTable.INTEGER_TYPE) ||
+                (firstType == SymbolTable.CHAR_TYPE && secondType == SymbolTable.INTEGER_TYPE);
+        if (!isDefined)
+            addError("Invalid types for arithmetic operator. Requires either 'int' or 'char'. Both cannot be 'char' as well.");
+        return isDefined;
+    }
+
+    private boolean isLogicalOperatorDefined(TypeSymbol firstType, TypeSymbol secondType) {
+        boolean isDefined = (firstType == SymbolTable.BOOLEAN_TYPE && secondType == SymbolTable.BOOLEAN_TYPE);
+        if (!isDefined) addError("Invalid types for logical operator. Requires 'boolean'.");
+        return isDefined;
+    }
+
+    // -----------------------------------------------------------------------------------------------------------------
+
+    public VariableSymbol lookupVariable(String name) {
+        Symbol symbol = symbolTable.lookup(name);
+        if (symbol instanceof VariableSymbol) return (VariableSymbol) symbol;
+        addError("Variable '%s' is not defined.", name);
+        return null;
+    }
+
+    public ConstantSymbol lookupConstant(String name) {
+        Symbol symbol = symbolTable.lookup(name);
+        if (symbol instanceof ConstantSymbol) return (ConstantSymbol) symbol;
+        addError("Constant '%s' is not defined.", name);
+        return null;
+    }
+
+    public TypeSymbol lookupType(String name) {
+        Symbol symbol = symbolTable.lookup(name);
+        if (symbol instanceof TypeSymbol) return (TypeSymbol) symbol;
+        addError("Type '%s' is not defined.", name);
+        return null;
+    }
+
+    public FcnSymbol lookupFcn(String name) {
+        Symbol symbol = symbolTable.lookup(name);
+        if (symbol instanceof FcnSymbol) return (FcnSymbol) symbol;
+        addError("Function '%s' is not defined.", name);
+        return null;
     }
 }

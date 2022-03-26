@@ -1,9 +1,8 @@
 package semantic.attrs;
 
-public enum SemanticType {
+public enum SymbolType {
     VARIABLE,
-    UNDEFINED,
-    DECLARATION,
+    CONSTANT,
     FUNCTION,
     TYPE,
 }
