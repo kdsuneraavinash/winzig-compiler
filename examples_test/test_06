@@ -1,20 +1,14 @@
 program addition:
 var sum, n: integer;
 
-function sumJ(a: integer): integer;
-begin
-    if a = 0 then return 0
-    else return a * a
-end sumJ;
-
 function sumF(a: integer): integer;
 begin
     if a = 0 then return 0
-    else return sumJ(a) + sumJ(a)
+    else return a + sumF(a - 1)
 end sumF;
 
 
 begin
    read(n);
-   output (sumF(n))
+   output (sumF(n), n)
 end addition.
