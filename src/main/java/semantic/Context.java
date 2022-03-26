@@ -1,6 +1,7 @@
 package semantic;
 
 import semantic.symbols.TypeSymbol;
+import semantic.table.SymbolTable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -10,7 +11,7 @@ public class Context {
     public List<String> newVars;
 
     public Context() {
-        expressionType = null;
+        expressionType = SymbolTable.UNDEFINED_TYPE;
         newVars = new ArrayList<>();
     }
 }

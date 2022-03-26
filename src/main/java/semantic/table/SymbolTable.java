@@ -15,6 +15,7 @@ public class SymbolTable {
     public static final TypeSymbol INTEGER_TYPE = new TypeSymbol("integer", true);
     public static final TypeSymbol CHAR_TYPE = new TypeSymbol("char", true);
     public static final TypeSymbol BOOLEAN_TYPE = new TypeSymbol("boolean", true);
+    public static final TypeSymbol UNDEFINED_TYPE = new TypeSymbol("", true);
 
     private final Map<String, Symbol> globalSymbols;
     private final Map<String, Symbol> localSymbols;

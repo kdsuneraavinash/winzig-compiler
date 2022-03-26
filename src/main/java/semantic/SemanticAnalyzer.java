@@ -9,6 +9,7 @@ import semantic.attrs.Instruction;
 import semantic.attrs.InstructionMnemonic;
 import semantic.attrs.Label;
 import semantic.attrs.OperatingSystemOpType;
+import semantic.attrs.UnaryOpType;
 import semantic.symbols.ConstantSymbol;
 import semantic.symbols.FcnSymbol;
 import semantic.symbols.Symbol;
@@ -253,9 +254,9 @@ public class SemanticAnalyzer extends BaseVisitor {
     protected void visitOutputStatement(ASTNode astNode) {
         for (int i = 0; i < astNode.getSize(); i++) { // list
             visit(astNode.getChild(i)); // OutExp
-            if (SymbolTable.INTEGER_TYPE.equals(context.expressionType)) {
+            if (context.expressionType.isInteger()) {
                 addCode(InstructionMnemonic.SOS, OperatingSystemOpType.OUTPUT);
-            } else if (SymbolTable.CHAR_TYPE.equals(context.expressionType)) {
+            } else if (context.expressionType.isChar()) {
                 addCode(InstructionMnemonic.SOS, OperatingSystemOpType.OUTPUTC);
             } else {
                 addError("Invalid type for output statement.");
@@ -314,9 +315,9 @@ public class SemanticAnalyzer extends BaseVisitor {
     @Override
     protected void visitReadStatement(ASTNode astNode) {
         for (int i = 0; i < astNode.getSize(); i++) { // list
-            if (SymbolTable.INTEGER_TYPE.equals(context.expressionType)) {
+            if (context.expressionType.isInteger()) {
                 addCode(InstructionMnemonic.SOS, OperatingSystemOpType.INPUT);
-            } else if (SymbolTable.CHAR_TYPE.equals(context.expressionType)) {
+            } else if (context.expressionType.isChar()) {
                 addCode(InstructionMnemonic.SOS, OperatingSystemOpType.INPUTC);
             } else {
                 addError("Invalid type for read statement.");
@@ -550,16 +551,24 @@ public class SemanticAnalyzer extends BaseVisitor {
     @Override
     protected void visitNegativeExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Primary
-        addCode(InstructionMnemonic.UOP, BinaryOpType.BMOD);
+        if (isNumericOperatorDefined(context.expressionType)) {
+            addCode(InstructionMnemonic.UOP, UnaryOpType.UNEG);
+        }
+        context.expressionType = SymbolTable.INTEGER_TYPE;
     }
 
     @Override
     protected void visitNotExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Primary
+        if (isBooleanOperatorDefined(context.expressionType)) {
+            addCode(InstructionMnemonic.UOP, UnaryOpType.UNOT);
+        }
+        context.expressionType = SymbolTable.BOOLEAN_TYPE;
     }
 
     @Override
     protected void visitEofExpression(ASTNode astNode) {
+        // TODO
     }
 
     @Override
@@ -568,26 +577,39 @@ public class SemanticAnalyzer extends BaseVisitor {
         for (int i = 1; i < astNode.getSize(); i++) { // list
             visit(astNode.getChild(i)); // Expression
         }
+        // TODO
     }
 
     @Override
     protected void visitSuccExpression(ASTNode astNode) {
-        visit(astNode.getChild(0)); // Expression
+        visit(astNode.getChild(0)); // Primary
+        if (isSuccPredOperatorDefined(context.expressionType)) {
+            addCode(InstructionMnemonic.UOP, UnaryOpType.USUCC);
+        }
+        // Expression type does not change.
     }
 
     @Override
     protected void visitPredExpression(ASTNode astNode) {
-        visit(astNode.getChild(0)); // Expression
+        visit(astNode.getChild(0)); // Primary
+        if (isSuccPredOperatorDefined(context.expressionType)) {
+            addCode(InstructionMnemonic.UOP, UnaryOpType.UPRED);
+        }
+        // Expression type does not change.
     }
 
     @Override
     protected void visitChrExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Expression
+        // Simply change the expression type to char.
+        context.expressionType = SymbolTable.CHAR_TYPE;
     }
 
     @Override
     protected void visitOrdExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Expression
+        // Simply change the expression type to integer.
+        context.expressionType = SymbolTable.INTEGER_TYPE;
     }
 
     @Override
@@ -637,24 +659,42 @@ public class SemanticAnalyzer extends BaseVisitor {
     }
 
     private boolean isRelationalOperatorDefined(TypeSymbol firstType, TypeSymbol secondType) {
-        boolean isDefined = (firstType == SymbolTable.INTEGER_TYPE || firstType == SymbolTable.CHAR_TYPE) &&
-                (secondType == SymbolTable.INTEGER_TYPE || secondType == SymbolTable.CHAR_TYPE);
+        boolean isDefined = (firstType.isInteger() || firstType.isChar()) &&
+                (secondType.isInteger() || secondType.isChar());
         if (!isDefined) addError("Invalid types for relational operator. Requires either 'int' or 'char'.");
         return isDefined;
     }
 
     private boolean isArithmeticOperatorDefined(TypeSymbol firstType, TypeSymbol secondType) {
-        boolean isDefined = (firstType == SymbolTable.INTEGER_TYPE && secondType == SymbolTable.CHAR_TYPE) ||
-                (firstType == SymbolTable.INTEGER_TYPE && secondType == SymbolTable.INTEGER_TYPE) ||
-                (firstType == SymbolTable.CHAR_TYPE && secondType == SymbolTable.INTEGER_TYPE);
+        boolean isDefined = (firstType.isInteger() && secondType.isChar()) ||
+                (firstType.isInteger() && secondType.isInteger()) ||
+                (firstType.isChar() && secondType.isInteger());
         if (!isDefined)
             addError("Invalid types for arithmetic operator. Requires either 'int' or 'char'. Both cannot be 'char' as well.");
         return isDefined;
     }
 
     private boolean isLogicalOperatorDefined(TypeSymbol firstType, TypeSymbol secondType) {
-        boolean isDefined = (firstType == SymbolTable.BOOLEAN_TYPE && secondType == SymbolTable.BOOLEAN_TYPE);
+        boolean isDefined = firstType.isBoolean() && secondType.isBoolean();
         if (!isDefined) addError("Invalid types for logical operator. Requires 'boolean'.");
+        return isDefined;
+    }
+
+    private boolean isBooleanOperatorDefined(TypeSymbol typeSymbol) {
+        boolean isDefined = typeSymbol.isBoolean();
+        if (!isDefined) addError("Invalid type for boolean operator. Requires 'boolean'.");
+        return isDefined;
+    }
+
+    private boolean isNumericOperatorDefined(TypeSymbol typeSymbol) {
+        boolean isDefined = typeSymbol.isInteger();
+        if (!isDefined) addError("Invalid type for numeric operator. Requires 'boolean'.");
+        return isDefined;
+    }
+
+    private boolean isSuccPredOperatorDefined(TypeSymbol typeSymbol) {
+        boolean isDefined = typeSymbol.isInteger() || typeSymbol.isChar();
+        if (!isDefined) addError("Invalid type for succ/pred operator. Requires 'boolean'.");
         return isDefined;
     }
 
