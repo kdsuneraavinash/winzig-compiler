@@ -1,5 +1,6 @@
 package semantic;
 
+import semantic.attrs.Label;
 import semantic.attrs.SemanticType;
 import semantic.attrs.Symbol;
 
@@ -7,30 +8,38 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.StringJoiner;
 
-public class Scope {
-    private final Scope parent;
+public class SymbolTable {
+    private final SymbolTable parent;
     private final Map<String, Symbol> symbols;
     private int top;
 
-    public Scope() {
+    public SymbolTable() {
         this(null);
         enterDclnSymbol("integer", SemanticType.TYPE);
         enterDclnSymbol("char", SemanticType.TYPE);
         enterDclnSymbol("boolean", SemanticType.TYPE);
     }
 
-    public Scope(Scope parent) {
+    public SymbolTable(SymbolTable parent) {
         this.parent = parent;
         symbols = new HashMap<>();
         this.top = 0;
     }
 
+    public void extendTop(SymbolTable child) {
+        this.top += child.top;
+    }
+
     public void enterVarSymbol(String name, SemanticType type) {
-        symbols.put(name, new Symbol(name, ++top, type));
+        symbols.put(name, new Symbol(name, type, ++top, null));
     }
 
     public void enterDclnSymbol(String name, SemanticType type) {
-        symbols.put(name, new Symbol(name, -1, type));
+        symbols.put(name, new Symbol(name, type, -1, null));
+    }
+
+    public void enterFcnSymbol(String name, SemanticType type, Label label) {
+        symbols.put(name, new Symbol(name, type, -1, label));
     }
 
     /**
@@ -74,7 +83,7 @@ public class Scope {
         sj.add("Top: " + top);
         sj.add("Symbols: ");
         for (Map.Entry<String, Symbol> entry : symbols.entrySet()) {
-            sj.add("\t" + entry.getKey() + ": " + entry.getValue());
+            sj.add("\t" + entry.getValue());
         }
         return sj.toString();
     }

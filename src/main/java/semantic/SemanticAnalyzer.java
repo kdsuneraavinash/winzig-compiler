@@ -5,6 +5,7 @@ import parser.nodes.ASTNode;
 import parser.nodes.IdentifierNode;
 import semantic.attrs.Instruction;
 import semantic.attrs.InstructionMnemonic;
+import semantic.attrs.Label;
 import semantic.attrs.SemanticType;
 import semantic.attrs.Symbol;
 
@@ -12,26 +13,38 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SemanticAnalyzer extends BaseVisitor {
-    private Scope scope;
+    private SymbolTable symbolTable;
     private Context context;
     private List<String> error;
     private List<Instruction> code;
-    private int next;
 
     private void addCode(InstructionMnemonic mnemonic, Object... register) {
         code.add(new Instruction(mnemonic, register));
-        next++;
     }
 
     private void addError(String message, Object... args) {
         error.add(String.format(message, args));
     }
 
+    private Label getLabel(int position) {
+        // Subtracting 1 because position is 1-indexed.
+        int zPosition = position - 1;
+        if (code.size() < zPosition) {
+            // Add NOP if nothing in the function (?)
+            addCode(InstructionMnemonic.NOP);
+        }
+        return code.get(zPosition).getLabel();
+    }
+
+    private int getNext() {
+        return code.size() + 1;
+    }
+
     // ---------------------------------------- Program ----------------------------------------------------------------
 
     public void analyze(ASTNode astNode) {
         this.context = new Context();
-        this.scope = new Scope();
+        this.symbolTable = new SymbolTable();
         this.error = new ArrayList<>();
         this.code = new ArrayList<>();
         visit(astNode);
@@ -44,7 +57,7 @@ public class SemanticAnalyzer extends BaseVisitor {
             System.out.println(line);
         }
         System.out.println("----------------------------------------------------");
-        System.out.println(this.scope);
+        System.out.println(this.symbolTable);
     }
 
     // ---------------------------------------- Program ----------------------------------------------------------------
@@ -67,6 +80,7 @@ public class SemanticAnalyzer extends BaseVisitor {
         for (int i = 0; i < astNode.getSize(); i++) { // list
             visit(astNode.getChild(i)); // Const
         }
+        context.type = SemanticType.DECLARATION;
     }
 
     @Override
@@ -78,7 +92,7 @@ public class SemanticAnalyzer extends BaseVisitor {
         TokenKind tokenKind = valueNode.getKind();
 
         // Constants cannot be defined twice in the same scope.
-        if (scope.isDefined(identifier, false)) {
+        if (symbolTable.isDefined(identifier, false)) {
             addError("Variable '%s' is already defined in the same scope.", identifier);
             return;
         }
@@ -96,7 +110,7 @@ public class SemanticAnalyzer extends BaseVisitor {
 
         // Define the constant at the top and mark the symbol as constant.
         addCode(InstructionMnemonic.LIT, registerValue);
-        scope.enterVarSymbol(identifier, SemanticType.CONSTANT);
+        symbolTable.enterVarSymbol(identifier, SemanticType.CONSTANT);
     }
 
     // ---------------------------------------- Types ------------------------------------------------------------------
@@ -133,7 +147,12 @@ public class SemanticAnalyzer extends BaseVisitor {
 
     @Override
     protected void visitFcn(ASTNode astNode) {
+        // Store the current scope.
+        SymbolTable oldSymbolTable = symbolTable;
+        symbolTable = new SymbolTable(oldSymbolTable);
+        // Process the function.
         IdentifierNode functionName = (IdentifierNode) astNode.getChild(0); // Name
+        int fcnStart = getNext();
         visit(astNode.getChild(1)); // Params
         visit(astNode.getChild(2)); // Name
         visit(astNode.getChild(3)); // Consts
@@ -141,15 +160,35 @@ public class SemanticAnalyzer extends BaseVisitor {
         visit(astNode.getChild(5)); // Dclns
         visit(astNode.getChild(6)); // Body
         visit(astNode.getChild(7)); // Name
+        // Load the old scope.
+        oldSymbolTable.extendTop(symbolTable);
+        symbolTable = oldSymbolTable;
+        // Add label to function start pos and define function as a symbol.
+        symbolTable.enterFcnSymbol(functionName.getIdentifierValue(), SemanticType.FUNCTION, getLabel(fcnStart));
+        context.type = SemanticType.DECLARATION;
     }
 
     @Override
     protected void visitParams(ASTNode astNode) {
         // Parameter for each function incoming variable.
+        context.newVars.clear();
         for (int i = 0; i < astNode.getSize(); i++) { // list
-
             visit(astNode.getChild(i)); // Dcln
         }
+        // Generate code for the new parameters.
+        // All parameters are loaded from local frame.
+        List<String> newVars = context.newVars;
+        for (int i = 0; i < newVars.size(); i++) {
+            String identifier = newVars.get(i);
+            if (symbolTable.isDefined(identifier, false)) {
+                addError("Variable '%s' already defined in the current scope.", identifier);
+                continue;
+            }
+            addCode(InstructionMnemonic.LLV, i + 1);
+            symbolTable.enterVarSymbol(identifier, SemanticType.VARIABLE);
+        }
+        context.newVars.clear();
+        context.type = SemanticType.DECLARATION;
     }
 
     // ---------------------------------------- Dcln -------------------------------------------------------------------
@@ -164,12 +203,12 @@ public class SemanticAnalyzer extends BaseVisitor {
         // Generate code for the new variables.
         // All dclns are treated as new variables initialized with 0.
         for (String identifier : context.newVars) {
-            if (scope.isDefined(identifier, false)) {
+            if (symbolTable.isDefined(identifier, false)) {
                 addError("Variable '%s' already defined in the current scope.", identifier);
                 continue;
             }
             addCode(InstructionMnemonic.LIT, 0);
-            scope.enterVarSymbol(identifier, SemanticType.VARIABLE);
+            symbolTable.enterVarSymbol(identifier, SemanticType.VARIABLE);
         }
         context.newVars.clear();
         context.type = SemanticType.DECLARATION;
@@ -185,12 +224,12 @@ public class SemanticAnalyzer extends BaseVisitor {
         String type = typeNode.getIdentifierValue();
 
         // The data type should be defined first.
-        if (!scope.isDefined(type)) {
+        if (!symbolTable.isDefined(type)) {
             addError("'%s' type is not not defined", type);
             return;
         }
         // The data should be of 'TYPE' type.
-        Symbol typeSymbol = scope.lookup(type);
+        Symbol typeSymbol = symbolTable.lookup(type);
         if (!SemanticType.TYPE.equals(typeSymbol.getType())) {
             addError("Expected '%s' to be a type, but was a %s", type, typeSymbol.getType());
             return;
