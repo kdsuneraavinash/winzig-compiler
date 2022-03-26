@@ -4,24 +4,24 @@ import semantic.attrs.SemanticType;
 
 public abstract class Symbol {
     private final String name;
-    private final SemanticType type;
+    private final SemanticType symbolType;
 
-    protected Symbol(String name, SemanticType type) {
+    protected Symbol(String name, SemanticType symbolType) {
         this.name = name;
-        this.type = type;
+        this.symbolType = symbolType;
     }
 
     public String getName() {
         return name;
     }
 
-    public SemanticType getType() {
-        return type;
+    public SemanticType getSymbolType() {
+        return symbolType;
     }
 
     @Override
     public String toString() {
-        return "[" + type + "] " + name;
+        return "[" + symbolType + "] " + name;
     }
 }
 

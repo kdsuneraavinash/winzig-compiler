@@ -9,6 +9,6 @@ public class TypeSymbol extends Symbol {
 
     @Override
     public String toString() {
-        return "[" + getType() + "] " + getName();
+        return "[" + getSymbolType() + "] " + getName();
     }
 }

@@ -1,6 +1,7 @@
 package semantic;
 
 import semantic.attrs.Label;
+import semantic.symbols.ConstantSymbol;
 import semantic.symbols.FcnSymbol;
 import semantic.symbols.Symbol;
 import semantic.symbols.TypeSymbol;
@@ -40,9 +41,14 @@ public class SymbolTable {
         this.isLocal = false;
     }
 
-    public void enterVarSymbol(String name, boolean isConstant) {
-        if (isLocal) localSymbols.put(name, new VariableSymbol(name, ++top, isConstant, false));
-        else globalSymbols.put(name, new VariableSymbol(name, ++top, isConstant, true));
+    public void enterVarSymbol(String name, TypeSymbol type) {
+        if (isLocal) localSymbols.put(name, new VariableSymbol(name, type, ++top, false));
+        else globalSymbols.put(name, new VariableSymbol(name, type, ++top, true));
+    }
+
+    public void enterConstSymbol(String name, TypeSymbol type, int value) {
+        if (isLocal) localSymbols.put(name, new ConstantSymbol(name, type, value));
+        else globalSymbols.put(name, new ConstantSymbol(name, type, value));
     }
 
     public void enterTypeSymbol(String name) {
@@ -61,11 +67,6 @@ public class SymbolTable {
 
     public boolean alreadyDefinedInScope(String name) {
         if (isLocal) return localSymbols.containsKey(name);
-        return globalSymbols.containsKey(name);
-    }
-
-    public boolean isDefined(String name) {
-        if (localSymbols.containsKey(name)) return true;
         return globalSymbols.containsKey(name);
     }
 

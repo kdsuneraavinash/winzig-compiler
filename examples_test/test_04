@@ -1,5 +1,5 @@
 program factors:
-    const a = 10, b = 'H';
-    var c: integer;
+    const a = 10, b = 'H', c = a;
+    var d: integer;
 begin
 end factors.

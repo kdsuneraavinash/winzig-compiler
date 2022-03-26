@@ -7,8 +7,10 @@ import semantic.attrs.Instruction;
 import semantic.attrs.InstructionMnemonic;
 import semantic.attrs.Label;
 import semantic.attrs.SemanticType;
+import semantic.symbols.ConstantSymbol;
 import semantic.symbols.Symbol;
 import semantic.symbols.TypeSymbol;
+import semantic.symbols.VariableSymbol;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -66,13 +68,18 @@ public class SemanticAnalyzer extends BaseVisitor {
 
     @Override
     protected void visitProgram(ASTNode astNode) {
-        visit(astNode.getChild(0)); // Name
+        String programName = ((IdentifierNode) astNode.getChild(0)).getIdentifierValue(); // Name
+        String programName2 = ((IdentifierNode) astNode.getChild(6)).getIdentifierValue(); // Name
+        if (!programName.equals(programName2)) {
+            addError("Program name of '%s' does not have a proper end.", programName);
+            return;
+        }
+
         visit(astNode.getChild(1)); // Consts
         visit(astNode.getChild(2)); // Types
         visit(astNode.getChild(3)); // Dclns
         visit(astNode.getChild(4)); // SubProgs
         visit(astNode.getChild(5)); // Body
-        visit(astNode.getChild(6)); // Name
     }
 
     // ---------------------------------------- Consts -----------------------------------------------------------------
@@ -101,18 +108,28 @@ public class SemanticAnalyzer extends BaseVisitor {
 
         // Supports char/int literals only. Each is stored as integer regardless of type.
         int registerValue;
+        TypeSymbol typeSymbol;
         if (tokenKind == TokenKind.CHAR_LITERAL) {
             registerValue = value.codePointAt(1);
+            typeSymbol = (TypeSymbol) symbolTable.lookup("char");
         } else if (tokenKind == TokenKind.INTEGER_LITERAL) {
             registerValue = Integer.parseInt(value);
+            typeSymbol = (TypeSymbol) symbolTable.lookup("integer");
         } else {
-            addError("Type mismatched. expected int/char, found %s", tokenKind);
-            return;
+            Symbol constSymbol = symbolTable.lookup(value);
+            if (constSymbol == null) {
+                addError("Constant declaration points to undefined %s", value);
+                return;
+            }
+            if (!(constSymbol instanceof ConstantSymbol)) {
+                addError("Type mismatched. expected int/char/const, found %s", constSymbol.getSymbolType());
+                return;
+            }
+            registerValue = ((ConstantSymbol) constSymbol).getValue();
+            typeSymbol = ((ConstantSymbol) constSymbol).getType();
         }
 
-        // Define the constant at the top and mark the symbol as constant.
-        addCode(InstructionMnemonic.LIT, registerValue);
-        symbolTable.enterVarSymbol(identifier, true);
+        symbolTable.enterConstSymbol(identifier, typeSymbol, registerValue);
     }
 
     // ---------------------------------------- Types ------------------------------------------------------------------
@@ -164,7 +181,7 @@ public class SemanticAnalyzer extends BaseVisitor {
             return;
         }
         if (!(returnTypeSymbol instanceof TypeSymbol)) {
-            addError("Expected function return type to be a TYPE, but found %s.", returnTypeSymbol.getType());
+            addError("Expected function return type to be a TYPE, but found %s.", returnTypeSymbol.getSymbolType());
             return;
         }
 
@@ -194,14 +211,10 @@ public class SemanticAnalyzer extends BaseVisitor {
         // Generate code for the new parameters.
         // All parameters are loaded from local frame.
         List<String> newVars = context.newVars;
-        for (int i = 0; i < newVars.size(); i++) {
-            String identifier = newVars.get(i);
-            if (symbolTable.alreadyDefinedInScope(identifier)) {
-                addError("Variable '%s' already defined.", identifier);
-                continue;
-            }
-            addCode(InstructionMnemonic.LLV, i + 1);
-            symbolTable.enterVarSymbol(identifier, false);
+        for (String identifier : newVars) {
+            Symbol newVarSymbol = symbolTable.lookup(identifier);
+            if (!(newVarSymbol instanceof VariableSymbol)) continue;
+            addCode(InstructionMnemonic.LLV, ((VariableSymbol) newVarSymbol).getPosition());
         }
         context.newVars.clear();
         context.type = SemanticType.DECLARATION;
@@ -219,12 +232,7 @@ public class SemanticAnalyzer extends BaseVisitor {
         // Generate code for the new variables.
         // All dclns are treated as new variables initialized with 0.
         for (String identifier : context.newVars) {
-            if (symbolTable.alreadyDefinedInScope(identifier)) {
-                addError("Variable '%s' already defined in the current scope.", identifier);
-                continue;
-            }
             addCode(InstructionMnemonic.LIT, 0);
-            symbolTable.enterVarSymbol(identifier, false);
         }
         context.newVars.clear();
         context.type = SemanticType.DECLARATION;
@@ -246,13 +254,19 @@ public class SemanticAnalyzer extends BaseVisitor {
             return;
         }
         // The data should be of 'TYPE' type.
-        if (!SemanticType.TYPE.equals(typeSymbol.getType())) {
-            addError("Expected '%s' to be a type, but was a %s", type, typeSymbol.getType());
+        if (!(typeSymbol instanceof TypeSymbol)) {
+            addError("Expected '%s' to be a type, but was a %s", type, typeSymbol.getSymbolType());
             return;
         }
 
         // Synthesize all the new variable names.
         for (IdentifierNode identifierNode : identifierNodes) {
+            String identifier = identifierNode.getIdentifierValue();
+            if (symbolTable.alreadyDefinedInScope(identifier)) {
+                addError("Variable '%s' already defined.", identifier);
+                continue;
+            }
+            symbolTable.enterVarSymbol(identifier, (TypeSymbol) typeSymbol);
             context.newVars.add(identifierNode.getIdentifierValue());
         }
     }
@@ -507,5 +521,21 @@ public class SemanticAnalyzer extends BaseVisitor {
 
     @Override
     public void visitIdentifier(IdentifierNode identifierNode) {
+        Symbol symbol = symbolTable.lookup(identifierNode.getIdentifierValue());
+        if (symbol == null) {
+            addError("Variable '%s' is not defined.", identifierNode.getIdentifierValue());
+            return;
+        }
+        if (!(symbol instanceof VariableSymbol)) {
+            addError("Expected variable, but found %s", symbol.getSymbolType());
+            return;
+        }
+        VariableSymbol variableSymbol = (VariableSymbol) symbol;
+        if (variableSymbol.isGlobal()) {
+            addCode(InstructionMnemonic.LGV, variableSymbol.getPosition());
+        } else {
+            addCode(InstructionMnemonic.LLV, variableSymbol.getPosition());
+        }
+        context.type = SemanticType.VARIABLE;
     }
 }

@@ -5,20 +5,21 @@ import semantic.attrs.SemanticType;
 public class VariableSymbol extends Symbol {
     private final int position;
     private final boolean isGlobal;
-    private final boolean isConstant;
+    private final TypeSymbol type;
 
-    public VariableSymbol(String name, int position, boolean isConstant, boolean isGlobal) {
+    public VariableSymbol(String name, TypeSymbol type, int position, boolean isGlobal) {
         super(name, SemanticType.VARIABLE);
+        this.type = type;
         this.position = position;
         this.isGlobal = isGlobal;
-        this.isConstant = isConstant;
     }
 
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("[").append(getType()).append("] ").append(getName());
-        sb.append("@").append(position);
+        sb.append("[").append(getSymbolType()).append("] ").append(getName())
+                .append(": ").append(getType().getName())
+                .append("@").append(position);
         if (!isGlobal) sb.append(" (local)");
         return sb.toString();
     }
@@ -31,7 +32,7 @@ public class VariableSymbol extends Symbol {
         return isGlobal;
     }
 
-    public boolean isConstant() {
-        return isConstant;
+    public TypeSymbol getType() {
+        return type;
     }
 }

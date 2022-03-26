@@ -16,6 +16,6 @@ public class FcnSymbol extends Symbol {
 
     @Override
     public String toString() {
-        return "[" + getType() + "] " + getName() + "->" + returnType.getName() + " #" + label.getLabel();
+        return "[" + getSymbolType() + "] " + getName() + "->" + returnType.getName() + " #" + label.getLabel();
     }
 }
