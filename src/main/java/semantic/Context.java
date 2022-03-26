@@ -10,10 +10,12 @@ public class Context {
     public TypeSymbol expressionType;
     public List<String> newVars;
     public List<String> newTypeLits;
+    public List<TypeSymbol> paramTypes;
 
     public Context() {
         expressionType = SymbolTable.UNDEFINED_TYPE;
         newVars = new ArrayList<>();
         newTypeLits = new ArrayList<>();
+        paramTypes = new ArrayList<>();
     }
 }

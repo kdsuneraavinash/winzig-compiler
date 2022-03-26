@@ -29,4 +29,8 @@ public class TypeSymbol extends Symbol {
     public boolean isCustom() {
         return !isInteger() && !isChar() && !isBoolean();
     }
+
+    public boolean isAssignable(TypeSymbol type) {
+        return equals(type);
+    }
 }

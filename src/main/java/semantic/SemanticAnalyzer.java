@@ -81,8 +81,14 @@ public class SemanticAnalyzer extends BaseVisitor {
         visit(astNode.getChild(1)); // Consts
         visit(astNode.getChild(2)); // Types
         visit(astNode.getChild(3)); // Dclns
+
+        Label programBeginLabel = new Label();
+        addCode(InstructionMnemonic.GOTO, programBeginLabel);
         visit(astNode.getChild(4)); // SubProgs
+        int programBegin = getNext();
         visit(astNode.getChild(5)); // Body
+        addCode(InstructionMnemonic.HALT);
+        attachLabel(programBeginLabel, programBegin);
     }
 
     // ---------------------------------------- Consts -----------------------------------------------------------------
@@ -178,6 +184,7 @@ public class SemanticAnalyzer extends BaseVisitor {
 
     @Override
     protected void visitFcn(ASTNode astNode) {
+        context.paramTypes.clear();
         String functionName = ((IdentifierNode) astNode.getChild(0)).getIdentifierValue(); // Name
         String returnTypeName = ((IdentifierNode) astNode.getChild(2)).getIdentifierValue(); // Name
         if (doesEndTokenMismatch(functionName, astNode.getChild(7))) return;
@@ -185,18 +192,23 @@ public class SemanticAnalyzer extends BaseVisitor {
         TypeSymbol returnTypeSymbol = lookupType(returnTypeName);
         if (returnTypeSymbol == null) return;
 
+
         symbolTable.beginLocalScope();
         int fcnStart = getNext();
         visit(astNode.getChild(1)); // Params
         visit(astNode.getChild(3)); // Consts
         visit(astNode.getChild(4)); // Types
         visit(astNode.getChild(5)); // Dclns
-        visit(astNode.getChild(6)); // Body
-        symbolTable.endLocalScope();
-        // Add label to function start pos and define function as a symbol.
+
+        // Before entering body, create function symbols to enable recursive calls.
         Label fcnLabel = new Label();
+        symbolTable.enterFcnSymbol(functionName, fcnLabel, new ArrayList<>(context.paramTypes), returnTypeSymbol);
+        // Then enter body.
+        visit(astNode.getChild(6)); // Body
+
+        symbolTable.endLocalScope();
         attachLabel(fcnLabel, fcnStart);
-        symbolTable.enterFcnSymbol(functionName, fcnLabel, returnTypeSymbol);
+        context.paramTypes.clear();
     }
 
     @Override
@@ -211,6 +223,7 @@ public class SemanticAnalyzer extends BaseVisitor {
         for (String identifier : context.newVars) {
             VariableSymbol newVarSymbol = lookupVariable(identifier);
             if (newVarSymbol == null) continue;
+            context.paramTypes.add(newVarSymbol.type);
             addCode(InstructionMnemonic.LLV, newVarSymbol.address);
         }
         context.newVars.clear();
@@ -429,6 +442,8 @@ public class SemanticAnalyzer extends BaseVisitor {
     protected void visitTrue(ASTNode astNode) {
     }
 
+    // -----------------------------------------------------------------------------------------------------------------
+
     @Override
     protected void visitLtEqualExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Term
@@ -566,11 +581,20 @@ public class SemanticAnalyzer extends BaseVisitor {
 
     @Override
     protected void visitCallExpression(ASTNode astNode) {
-        visit(astNode.getChild(0)); // Name
+        FcnSymbol fcnSymbol = lookupFcn(((IdentifierNode) astNode.getChild(0)).getIdentifierValue());
+        if (fcnSymbol == null) return;
+
+        List<TypeSymbol> typeSymbols = new ArrayList<>();
+        int top = symbolTable.getTop();
+
         for (int i = 1; i < astNode.getSize(); i++) { // list
             visit(astNode.getChild(i)); // Expression
+            typeSymbols.add(context.expressionType);
         }
-        // TODO
+
+        if (!isFunctionAssignable(fcnSymbol, typeSymbols)) return;
+        addCode(InstructionMnemonic.CODE, fcnSymbol.label);
+        addCode(InstructionMnemonic.CALL, top);
     }
 
     @Override
@@ -676,6 +700,22 @@ public class SemanticAnalyzer extends BaseVisitor {
         boolean isDefined = typeSymbol.isInteger() || typeSymbol.isChar() || typeSymbol.isCustom();
         if (!isDefined) addError("Invalid type for succ/pred operations. Found '%s'.", typeSymbol.name);
         return isDefined;
+    }
+
+    private boolean isFunctionAssignable(FcnSymbol fcnSymbol, List<TypeSymbol> paramTypes) {
+        if (fcnSymbol.paramTypes.size() != paramTypes.size()) {
+            addError("Invalid number of parameters for function '%s'. Expected %d, found %d.",
+                    fcnSymbol.name, fcnSymbol.paramTypes.size(), paramTypes.size());
+            return false;
+        }
+        for (int i = 0; i < fcnSymbol.paramTypes.size(); i++) {
+            if (!fcnSymbol.paramTypes.get(i).isAssignable(paramTypes.get(i))) {
+                addError("Invalid argument type for function '%s'. Expected '%s', found '%s'.",
+                        fcnSymbol.name, fcnSymbol.paramTypes.get(i).name, paramTypes.get(i).name);
+                return false;
+            }
+        }
+        return true;
     }
 
     // -----------------------------------------------------------------------------------------------------------------

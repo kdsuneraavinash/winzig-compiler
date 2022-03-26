@@ -8,6 +8,7 @@ import semantic.symbols.TypeSymbol;
 import semantic.symbols.VariableSymbol;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
 
@@ -99,9 +100,9 @@ public class SymbolTable {
      * @param label      the label of the function.
      * @param returnType the return type of the function.
      */
-    public void enterFcnSymbol(String name, Label label, TypeSymbol returnType) {
+    public void enterFcnSymbol(String name, Label label, List<TypeSymbol> paramTypes, TypeSymbol returnType) {
         assert !isInLocalScope;
-        globalSymbols.put(name, new FcnSymbol(name, label, returnType));
+        globalSymbols.put(name, new FcnSymbol(name, label, paramTypes, returnType));
     }
 
     // -----------------------------------------------------------------------------------------------------------------
@@ -131,6 +132,11 @@ public class SymbolTable {
     public boolean alreadyDefinedInScope(String name) {
         if (isInLocalScope) return localSymbols.containsKey(name);
         return globalSymbols.containsKey(name);
+    }
+
+    public int getTop() {
+        if (isInLocalScope) return localTop;
+        return globalTop;
     }
 
     @Override
