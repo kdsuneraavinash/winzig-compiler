@@ -11,12 +11,6 @@ public class Symbol {
         this.type = type;
     }
 
-    public Symbol(String name, SemanticType type) {
-        this.name = name;
-        this.position = -1;
-        this.type = type;
-    }
-
     public String getName() {
         return name;
     }

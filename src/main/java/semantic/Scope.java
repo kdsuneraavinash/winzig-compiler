@@ -10,29 +10,27 @@ import java.util.StringJoiner;
 public class Scope {
     private final Scope parent;
     private final Map<String, Symbol> symbols;
+    private int top;
 
     public Scope() {
         this(null);
-        enter(new Symbol("integer", SemanticType.TYPE));
-        enter(new Symbol("char", SemanticType.TYPE));
-        enter(new Symbol("boolean", SemanticType.TYPE));
+        enterDclnSymbol("integer", SemanticType.TYPE);
+        enterDclnSymbol("char", SemanticType.TYPE);
+        enterDclnSymbol("boolean", SemanticType.TYPE);
     }
 
     public Scope(Scope parent) {
         this.parent = parent;
         symbols = new HashMap<>();
-        this.next = (parent != null) ? parent.next : 1;
         this.top = 0;
-        this.type = SemanticType.UNDEFINED;
     }
 
-    /**
-     * Enter a symbol to the current scope.
-     *
-     * @param symbol Symbol to enter.
-     */
-    public void enter(Symbol symbol) {
-        symbols.put(symbol.getName(), symbol);
+    public void enterVarSymbol(String name, SemanticType type) {
+        symbols.put(name, new Symbol(name, ++top, type));
+    }
+
+    public void enterDclnSymbol(String name, SemanticType type) {
+        symbols.put(name, new Symbol(name, -1, type));
     }
 
     /**
@@ -73,9 +71,7 @@ public class Scope {
     @Override
     public String toString() {
         StringJoiner sj = new StringJoiner("\n");
-        sj.add("Next: " + next);
         sj.add("Top: " + top);
-        sj.add("Type: " + type);
         sj.add("Symbols: ");
         for (Map.Entry<String, Symbol> entry : symbols.entrySet()) {
             sj.add("\t" + entry.getKey() + ": " + entry.getValue());
