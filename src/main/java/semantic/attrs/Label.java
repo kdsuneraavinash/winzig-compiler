@@ -9,7 +9,7 @@ public class Label {
         this.index = labelCount++;
     }
 
-    String getLabel() {
+    public String getLabel() {
         return "L" + index;
     }
 }

@@ -7,13 +7,15 @@ import semantic.attrs.Instruction;
 import semantic.attrs.InstructionMnemonic;
 import semantic.attrs.Label;
 import semantic.attrs.SemanticType;
-import semantic.attrs.Symbol;
+import semantic.symbols.Symbol;
+import semantic.symbols.TypeSymbol;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class SemanticAnalyzer extends BaseVisitor {
     private SymbolTable symbolTable;
+
     private Context context;
     private List<String> error;
     private List<Instruction> code;
@@ -29,7 +31,7 @@ public class SemanticAnalyzer extends BaseVisitor {
     private Label getLabel(int position) {
         // Subtracting 1 because position is 1-indexed.
         int zPosition = position - 1;
-        if (code.size() < zPosition) {
+        if (code.size() <= zPosition) {
             // Add NOP if nothing in the function (?)
             addCode(InstructionMnemonic.NOP);
         }
@@ -92,8 +94,8 @@ public class SemanticAnalyzer extends BaseVisitor {
         TokenKind tokenKind = valueNode.getKind();
 
         // Constants cannot be defined twice in the same scope.
-        if (symbolTable.isDefined(identifier, false)) {
-            addError("Variable '%s' is already defined in the same scope.", identifier);
+        if (symbolTable.alreadyDefinedInScope(identifier)) {
+            addError("Variable '%s' is already defined.", identifier);
             return;
         }
 
@@ -110,7 +112,7 @@ public class SemanticAnalyzer extends BaseVisitor {
 
         // Define the constant at the top and mark the symbol as constant.
         addCode(InstructionMnemonic.LIT, registerValue);
-        symbolTable.enterVarSymbol(identifier, SemanticType.CONSTANT);
+        symbolTable.enterVarSymbol(identifier, true);
     }
 
     // ---------------------------------------- Types ------------------------------------------------------------------
@@ -147,24 +149,38 @@ public class SemanticAnalyzer extends BaseVisitor {
 
     @Override
     protected void visitFcn(ASTNode astNode) {
-        // Store the current scope.
-        SymbolTable oldSymbolTable = symbolTable;
-        symbolTable = new SymbolTable(oldSymbolTable);
         // Process the function.
-        IdentifierNode functionName = (IdentifierNode) astNode.getChild(0); // Name
+        String functionName = ((IdentifierNode) astNode.getChild(0)).getIdentifierValue(); // Name
+        String functionName2 = ((IdentifierNode) astNode.getChild(7)).getIdentifierValue(); // Name
+        IdentifierNode returnTypeNode = (IdentifierNode) astNode.getChild(2); // Name
+
+        if (!functionName.equals(functionName2)) {
+            addError("Function name of '%s' does not have a proper end.", functionName);
+            return;
+        }
+        Symbol returnTypeSymbol = symbolTable.lookup(returnTypeNode.getIdentifierValue());
+        if (returnTypeSymbol == null) {
+            addError("Function return type '%s' is not defined.", returnTypeNode.getIdentifierValue());
+            return;
+        }
+        if (!(returnTypeSymbol instanceof TypeSymbol)) {
+            addError("Expected function return type to be a TYPE, but found %s.", returnTypeSymbol.getType());
+            return;
+        }
+
+        // Load local context
+        int globalTop = symbolTable.startLocal();
         int fcnStart = getNext();
         visit(astNode.getChild(1)); // Params
-        visit(astNode.getChild(2)); // Name
         visit(astNode.getChild(3)); // Consts
         visit(astNode.getChild(4)); // Types
         visit(astNode.getChild(5)); // Dclns
         visit(astNode.getChild(6)); // Body
-        visit(astNode.getChild(7)); // Name
-        // Load the old scope.
-        oldSymbolTable.extendTop(symbolTable);
-        symbolTable = oldSymbolTable;
+
+        // Load global context
+        symbolTable.endLocal(globalTop);
         // Add label to function start pos and define function as a symbol.
-        symbolTable.enterFcnSymbol(functionName.getIdentifierValue(), SemanticType.FUNCTION, getLabel(fcnStart));
+        symbolTable.enterFcnSymbol(functionName, getLabel(fcnStart), (TypeSymbol) returnTypeSymbol);
         context.type = SemanticType.DECLARATION;
     }
 
@@ -180,12 +196,12 @@ public class SemanticAnalyzer extends BaseVisitor {
         List<String> newVars = context.newVars;
         for (int i = 0; i < newVars.size(); i++) {
             String identifier = newVars.get(i);
-            if (symbolTable.isDefined(identifier, false)) {
-                addError("Variable '%s' already defined in the current scope.", identifier);
+            if (symbolTable.alreadyDefinedInScope(identifier)) {
+                addError("Variable '%s' already defined.", identifier);
                 continue;
             }
             addCode(InstructionMnemonic.LLV, i + 1);
-            symbolTable.enterVarSymbol(identifier, SemanticType.VARIABLE);
+            symbolTable.enterVarSymbol(identifier, false);
         }
         context.newVars.clear();
         context.type = SemanticType.DECLARATION;
@@ -203,12 +219,12 @@ public class SemanticAnalyzer extends BaseVisitor {
         // Generate code for the new variables.
         // All dclns are treated as new variables initialized with 0.
         for (String identifier : context.newVars) {
-            if (symbolTable.isDefined(identifier, false)) {
+            if (symbolTable.alreadyDefinedInScope(identifier)) {
                 addError("Variable '%s' already defined in the current scope.", identifier);
                 continue;
             }
             addCode(InstructionMnemonic.LIT, 0);
-            symbolTable.enterVarSymbol(identifier, SemanticType.VARIABLE);
+            symbolTable.enterVarSymbol(identifier, false);
         }
         context.newVars.clear();
         context.type = SemanticType.DECLARATION;
@@ -224,12 +240,12 @@ public class SemanticAnalyzer extends BaseVisitor {
         String type = typeNode.getIdentifierValue();
 
         // The data type should be defined first.
-        if (!symbolTable.isDefined(type)) {
+        Symbol typeSymbol = symbolTable.lookup(type);
+        if (typeSymbol == null) {
             addError("'%s' type is not not defined", type);
             return;
         }
         // The data should be of 'TYPE' type.
-        Symbol typeSymbol = symbolTable.lookup(type);
         if (!SemanticType.TYPE.equals(typeSymbol.getType())) {
             addError("Expected '%s' to be a type, but was a %s", type, typeSymbol.getType());
             return;
