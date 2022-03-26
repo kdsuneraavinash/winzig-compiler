@@ -11,11 +11,13 @@ public class Context {
     public List<String> newVars;
     public List<String> newTypeLits;
     public List<TypeSymbol> paramTypes;
+    public int top;
 
     public Context() {
         expressionType = SymbolTable.UNDEFINED_TYPE;
         newVars = new ArrayList<>();
         newTypeLits = new ArrayList<>();
         paramTypes = new ArrayList<>();
+        top = 0;
     }
 }

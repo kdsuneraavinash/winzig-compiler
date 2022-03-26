@@ -52,7 +52,6 @@ public class SymbolTable {
      */
     public void endLocalScope() {
         assert this.isInLocalScope;
-        this.globalTop += this.localTop;
         this.localTop = 0;
         this.localSymbols.clear();
         this.isInLocalScope = false;
@@ -137,6 +136,11 @@ public class SymbolTable {
     public int getTop() {
         if (isInLocalScope) return localTop;
         return globalTop;
+    }
+
+    public void increaseTop() {
+        if (isInLocalScope) localTop++;
+        else globalTop++;
     }
 
     @Override

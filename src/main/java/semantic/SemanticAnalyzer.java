@@ -224,7 +224,6 @@ public class SemanticAnalyzer extends BaseVisitor {
             VariableSymbol newVarSymbol = lookupVariable(identifier);
             if (newVarSymbol == null) continue;
             context.paramTypes.add(newVarSymbol.type);
-            addCode(InstructionMnemonic.LLV, newVarSymbol.address);
         }
         context.newVars.clear();
     }
@@ -391,6 +390,7 @@ public class SemanticAnalyzer extends BaseVisitor {
     @Override
     protected void visitReturnStatement(ASTNode astNode) {
         visit(astNode.getChild(0)); // Expression
+        addCode(InstructionMnemonic.RTN, 1);
     }
 
     @Override
@@ -428,8 +428,20 @@ public class SemanticAnalyzer extends BaseVisitor {
 
     @Override
     protected void visitAssignmentStatement(ASTNode astNode) {
-        visit(astNode.getChild(0)); // Name
+        String identifier = ((IdentifierNode) astNode.getChild(0)).getIdentifierValue(); // Name
+        VariableSymbol variableSymbol = lookupVariable(identifier);
+        if (variableSymbol == null) return;
         visit(astNode.getChild(1)); // Expression
+        if (!variableSymbol.type.isAssignable(context.expressionType)) {
+            addError("Invalid type for assignment statement: expected " + variableSymbol.type +
+                    ", got " + context.expressionType);
+            return;
+        }
+        if (variableSymbol.isGlobal) {
+            addCode(InstructionMnemonic.SGV, variableSymbol.address);
+        } else {
+            addCode(InstructionMnemonic.SLV, variableSymbol.address);
+        }
     }
 
     @Override
@@ -495,17 +507,21 @@ public class SemanticAnalyzer extends BaseVisitor {
     @Override
     protected void visitAddExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Term
+        TypeSymbol leftTypeSymbol = context.expressionType;
         visit(astNode.getChild(1)); // Term
         addCode(InstructionMnemonic.BOP, BinaryOpType.BPLUS);
-        context.expressionType = SymbolTable.INTEGER_TYPE;
+        // Expression type is the type of the left operand
+        context.expressionType = leftTypeSymbol;
     }
 
     @Override
     protected void visitSubtractExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Term
+        TypeSymbol leftTypeSymbol = context.expressionType;
         visit(astNode.getChild(1)); // Term
         addCode(InstructionMnemonic.BOP, BinaryOpType.BMINUS);
-        context.expressionType = SymbolTable.INTEGER_TYPE;
+        // Expression type is the type of the left operand
+        context.expressionType = leftTypeSymbol;
     }
 
     @Override
@@ -595,6 +611,7 @@ public class SemanticAnalyzer extends BaseVisitor {
         if (!isFunctionAssignable(fcnSymbol, typeSymbols)) return;
         addCode(InstructionMnemonic.CODE, fcnSymbol.label);
         addCode(InstructionMnemonic.CALL, top);
+        symbolTable.increaseTop();
     }
 
     @Override
