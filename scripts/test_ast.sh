@@ -4,6 +4,6 @@ NC='\033[0m'
 
 for file in $(find examples -type f ! -name "*.*")
 do
-  ./run.sh "$file" > test.tree
+  ./scripts/run.sh -ast "$file" > test.tree
   ((diff test.tree "$file.tree") && (echo -e "✅ ${GREEN}Passed:${NC} $file")) || (echo -e "❌ ${RED}Failed:${NC} $file")
 done

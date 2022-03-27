@@ -48,5 +48,6 @@ gradle-app.setting
 
 # End of https://www.toptal.com/developers/gitignore/api/java,gradle
 
+test.abs
 test.tree
 .idea
