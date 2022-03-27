@@ -82,13 +82,18 @@ public class SemanticAnalyzer extends BaseVisitor {
         visit(astNode.getChild(2)); // Types
         visit(astNode.getChild(3)); // Dclns
 
-        Label programBeginLabel = new Label();
-        addCode(InstructionMnemonic.GOTO, programBeginLabel);
+        // Go to entry point and skip sub program section.
+        // Otherwise, will enter sub program first since they will be in the top.
+        // The entry point label will be attached to the correct position afterwards.
+        Label entryPointLabel = new Label();
+        addCode(InstructionMnemonic.GOTO, entryPointLabel);
         visit(astNode.getChild(4)); // SubProgs
-        int programBegin = getNext();
+
+        // Entry point.
+        int entryPointPosition = getNext();
         visit(astNode.getChild(5)); // Body
         addCode(InstructionMnemonic.HALT);
-        attachLabel(programBeginLabel, programBegin);
+        attachLabel(entryPointLabel, entryPointPosition);
     }
 
     // ---------------------------------------- Consts -----------------------------------------------------------------
@@ -104,7 +109,6 @@ public class SemanticAnalyzer extends BaseVisitor {
     protected void visitConst(ASTNode astNode) {
         IdentifierNode identifierNode = (IdentifierNode) astNode.getChild(0); // Name
         IdentifierNode valueNode = (IdentifierNode) astNode.getChild(1); // ConstValue
-
         String identifier = identifierNode.getIdentifierValue();
         String value = valueNode.getIdentifierValue();
         TokenKind tokenKind = valueNode.getKind();
@@ -116,6 +120,8 @@ public class SemanticAnalyzer extends BaseVisitor {
         }
 
         // Supports char/int literals only. Each is stored as integer regardless of type.
+        // Constant can point to another constant, but it should be defined before this.
+        // Basically, the value should be determinable at compile time.
         int constantValue;
         TypeSymbol constantType;
         if (tokenKind == TokenKind.CHAR_LITERAL) {
@@ -132,6 +138,7 @@ public class SemanticAnalyzer extends BaseVisitor {
             constantType = constSymbol.type;
         }
 
+        // Constants are not stored in the memory. The value is directly used.
         symbolTable.enterConstantSymbol(identifier, constantType, constantValue);
     }
 
@@ -146,12 +153,18 @@ public class SemanticAnalyzer extends BaseVisitor {
 
     @Override
     protected void visitType(ASTNode astNode) {
-        context.newTypeLits.clear();
-
         String typeName = ((IdentifierNode) astNode.getChild(0)).getIdentifierValue(); // Name
+
+        // Following is used to find the literals that are defined in the type.
+        // We clear it, so it would not have previously calculated values.
+        context.newTypeLits.clear();
         visit(astNode.getChild(1)); // ListList
 
         // Define type and retrieve it to use for constant declaration.
+        // User defined types will be simply a collection of names.
+        // As implementation, they will be denoted as compile time constants.
+        // So `type A = (p, q, r)` generated 3 constants; p, q, r.
+        // However, the type of the constants generated will be A.
         symbolTable.enterTypeSymbol(typeName);
         TypeSymbol typeSymbol = lookupType(typeName);
         if (typeSymbol == null) return;
@@ -162,8 +175,6 @@ public class SemanticAnalyzer extends BaseVisitor {
             String newVar = newVars.get(i);
             symbolTable.enterConstantSymbol(newVar, typeSymbol, i);
         }
-
-        context.newTypeLits.clear();
     }
 
     @Override
@@ -177,57 +188,76 @@ public class SemanticAnalyzer extends BaseVisitor {
 
     @Override
     protected void visitSubprogs(ASTNode astNode) {
+        // Stores the current global top.
+        // Inside the functions, all the addresses will be relative to function start position.
+        // After the function definitions are over, the global will need to be restored.
+        int globalTop = context.top;
         for (int i = 0; i < astNode.getSize(); i++) { // *
+            context.top = 0;
             visit(astNode.getChild(i)); // Fcn
         }
+        context.top = globalTop;
     }
 
     @Override
     protected void visitFcn(ASTNode astNode) {
-        context.paramTypes.clear();
         String functionName = ((IdentifierNode) astNode.getChild(0)).getIdentifierValue(); // Name
         String returnTypeName = ((IdentifierNode) astNode.getChild(2)).getIdentifierValue(); // Name
         if (doesEndTokenMismatch(functionName, astNode.getChild(7))) return;
 
+        int functionEntryPosition = getNext();
+        // Get the return type from the function definition.
+        // The return value is required to determine the type of the values of calls.
         TypeSymbol returnTypeSymbol = lookupType(returnTypeName);
         if (returnTypeSymbol == null) return;
 
-        int globalTop = context.top;
-        context.top = 0;
+        // The param types will be used to synthesize the parameters of the function.
+        // This will be used for compile time checking of parameters to function calls.
+        context.paramTypes.clear();
+
+        // Begins a new scope. (A new local symbol table)
         symbolTable.beginLocalScope();
-        int fcnStart = getNext();
         visit(astNode.getChild(1)); // Params
         visit(astNode.getChild(3)); // Consts
         visit(astNode.getChild(4)); // Types
         visit(astNode.getChild(5)); // Dclns
 
         // Before entering body, create function symbols to enable recursive calls.
-        Label fcnLabel = new Label();
-        symbolTable.enterFcnSymbol(functionName, fcnLabel, new ArrayList<>(context.paramTypes), returnTypeSymbol);
+        // The entry point label is used to generate the function call instructions.
+        // Param types are copied to remove side effects of clearing the array.
+        // Even if this is entered while in local scope, functions are always global.
+        Label functionEntryLabel = new Label();
+        List<TypeSymbol> paramTypes = new ArrayList<>(context.paramTypes);
+        symbolTable.enterFcnSymbol(functionName, functionEntryLabel, paramTypes, returnTypeSymbol);
+
         // Then enter body.
         visit(astNode.getChild(6)); // Body
-
         symbolTable.endLocalScope();
-        context.top = globalTop;
-        attachLabel(fcnLabel, fcnStart);
-        context.paramTypes.clear();
+
+        // Attach labels.
+        attachLabel(functionEntryLabel, functionEntryPosition);
     }
 
     @Override
     protected void visitParams(ASTNode astNode) {
         // Parameter for each function incoming variable.
+        // Following will be used to get the newly created parameters.
         context.newVars.clear();
         for (int i = 0; i < astNode.getSize(); i++) { // list
             visit(astNode.getChild(i)); // Dcln
         }
+
         // Generate code for the new parameters.
         // All parameters are loaded from local frame.
+        // Parameters will not have explicit value storage.
+        // So, no instructions will be generated.
         for (String identifier : context.newVars) {
             VariableSymbol newVarSymbol = lookupVariable(identifier);
             if (newVarSymbol == null) continue;
+            // Top is already increased by variable declaration.
+            // So we do not need to change the top to denote the pushing of params.
             context.paramTypes.add(newVarSymbol.type);
         }
-        context.newVars.clear();
     }
 
     // ---------------------------------------- Dcln -------------------------------------------------------------------
@@ -235,19 +265,22 @@ public class SemanticAnalyzer extends BaseVisitor {
     @Override
     protected void visitDclns(ASTNode astNode) {
         // Find all the defined variables and add them to the scope.
+        // Following will be used to get the newly created variables.
         context.newVars.clear();
         for (int i = 0; i < astNode.getSize(); i++) { // +
             visit(astNode.getChild(i)); // Dcln
         }
+
         // Generate code for the new variables.
         // All dclns are treated as new variables initialized with 0.
+        // These will be explicitly stored, so instructions will be generated.
         for (String identifier : context.newVars) {
             VariableSymbol newVarSymbol = lookupVariable(identifier);
             if (newVarSymbol == null) continue;
             // Top is already increased by variable declaration.
+            // So we do not need to change the top value.
             addCode(InstructionMnemonic.LIT, 0);
         }
-        context.newVars.clear();
     }
 
     @Override
@@ -257,13 +290,15 @@ public class SemanticAnalyzer extends BaseVisitor {
             identifierNodes.add((IdentifierNode) astNode.getChild(i)); // Name
         }
         IdentifierNode typeNode = (IdentifierNode) astNode.getChild(astNode.getSize() - 1); // Name (Type)
-        String type = typeNode.getIdentifierValue();
 
-        // The data type should be defined first.
-        TypeSymbol typeSymbol = lookupType(type);
+        // Get the type symbol for the variable from symbol table.
+        TypeSymbol typeSymbol = lookupType(typeNode.getIdentifierValue());
         if (typeSymbol == null) return;
 
         // Define new variables in the symbol table.
+        // Here, no new machine instructions are generated.
+        // The above node (either dcln or param) is expected to deal with them.
+        // The variables will simply be added to the symbol table.
         for (IdentifierNode identifierNode : identifierNodes) {
             String identifier = identifierNode.getIdentifierValue();
             if (symbolTable.alreadyDefinedInScope(identifier)) {
@@ -288,6 +323,9 @@ public class SemanticAnalyzer extends BaseVisitor {
     protected void visitOutputStatement(ASTNode astNode) {
         for (int i = 0; i < astNode.getSize(); i++) { // list
             visit(astNode.getChild(i)); // OutExp
+
+            // Generate correct output depending on the expression type.
+            // TODO: Handle the case of string output.
             if (context.expressionType.isInteger()) {
                 addCode(InstructionMnemonic.SOS, OperatingSystemOpType.OUTPUT);
             } else if (context.expressionType.isChar()) {
@@ -298,79 +336,97 @@ public class SemanticAnalyzer extends BaseVisitor {
             }
             context.top--;
         }
+        // New line at the end of output.
         addCode(InstructionMnemonic.SOS, OperatingSystemOpType.OUTPUTL);
     }
 
     @Override
     protected void visitIfStatement(ASTNode astNode) {
         visit(astNode.getChild(0)); // Expression
-        if (!context.expressionType.isBoolean()) {
-            addError("Invalid type for if statement.");
-        }
-        Label thenStartLabel = new Label();
-        Label elseStartLabel = astNode.getSize() == 3 ? new Label() : null;
-        Label ifEndLabel = new Label();
+        if (!context.expressionType.isBoolean()) addError("Invalid type for if statement.");
 
-        // Evaluate the condition.
-        addCode(InstructionMnemonic.COND, thenStartLabel, Objects.requireNonNullElse(elseStartLabel, ifEndLabel));
+        Label thenEntryLabel = new Label();
+        Label elseEntryLabel = astNode.getSize() == 3 ? new Label() : null;
+        Label ifExitLabel = new Label();
+
+        // Evaluate the condition. (Pops one value off the stack)
+        // Here, depending on the else clause, go to either else or end of if.
+        Label thenExitLabel = Objects.requireNonNullElse(elseEntryLabel, ifExitLabel);
+        addCode(InstructionMnemonic.COND, thenEntryLabel, thenExitLabel);
         context.top--;
 
         // Then statement.
-        int thenStart = getNext();
+        // After then, go to the end of statement.
+        int thenEntryPosition = getNext();
         visit(astNode.getChild(1)); // Statement
-        addCode(InstructionMnemonic.GOTO, ifEndLabel);
-        attachLabel(thenStartLabel, thenStart);
-        // Else statement.
-        if (elseStartLabel != null) { // ?
-            int elseStart = getNext();
+        addCode(InstructionMnemonic.GOTO, ifExitLabel);
+        attachLabel(thenEntryLabel, thenEntryPosition);
+
+        if (elseEntryLabel != null) { // ?
+            int elseStartPosition = getNext();
             visit(astNode.getChild(2)); // Statement
-            attachLabel(elseStartLabel, elseStart);
+            attachLabel(elseEntryLabel, elseStartPosition);
         }
-        // End if.
-        attachLabel(ifEndLabel, getNext());
+        // With current implementation, the if statement is always followed by a NOP.
+        // The if exit label is attached to the NOP.
+        attachLabel(ifExitLabel, getNext());
     }
 
     @Override
     protected void visitWhileStatement(ASTNode astNode) {
+        // TODO: Implement this.
         visit(astNode.getChild(0)); // Expression
         visit(astNode.getChild(1)); // Statement
+        throw new UnsupportedOperationException("while");
     }
 
     @Override
     protected void visitRepeatStatement(ASTNode astNode) {
+        // TODO: Implement this.
         for (int i = 0; i < astNode.getSize() - 1; i++) { // list
             visit(astNode.getChild(i)); // Statement
         }
         visit(astNode.getChild(astNode.getSize() - 1)); // Expression
+        throw new UnsupportedOperationException("repeat");
     }
 
     @Override
     protected void visitForStatement(ASTNode astNode) {
+        // TODO: Implement this.
         visit(astNode.getChild(0)); // ForStat
         visit(astNode.getChild(1)); // ForExp
         visit(astNode.getChild(2)); // ForStat
         visit(astNode.getChild(3)); // Statement
+        throw new UnsupportedOperationException("for");
     }
 
     @Override
     protected void visitLoopStatement(ASTNode astNode) {
+        // TODO: Implement this.
         for (int i = 0; i < astNode.getSize(); i++) { // list
             visit(astNode.getChild(i)); // Statement
         }
+        throw new UnsupportedOperationException("loop");
     }
 
     @Override
     protected void visitCaseStatement(ASTNode astNode) {
+        // TODO: Implement this.
         visit(astNode.getChild(0)); // Expression
         for (int i = 1; i < astNode.getSize() - 1; i++) { // Caseclauses +
             visit(astNode.getChild(i)); // Caseclause
         }
         visit(astNode.getChild(astNode.getSize() - 1)); // OtherwiseClause
+        throw new UnsupportedOperationException("case");
     }
 
     @Override
     protected void visitReadStatement(ASTNode astNode) {
         for (int i = 0; i < astNode.getSize(); i++) { // list
+            // Change instruction depending on the parameter type.
+            // Here top increases by one each time.
+            // But, since the next instruction saves the value, top will decrease again.
+            // So overall, no change to the top.
             if (context.expressionType.isInteger()) {
                 addCode(InstructionMnemonic.SOS, OperatingSystemOpType.INPUT);
             } else if (context.expressionType.isChar()) {
@@ -379,6 +435,7 @@ public class SemanticAnalyzer extends BaseVisitor {
                 addError("Invalid type for read statement.");
                 continue;
             }
+            // Generate instruction to save in local/global variable.
             String identifier = ((IdentifierNode) astNode.getChild(i)).getIdentifierValue();
             VariableSymbol variableSymbol = lookupVariable(identifier);
             if (variableSymbol == null) continue;
@@ -392,6 +449,8 @@ public class SemanticAnalyzer extends BaseVisitor {
 
     @Override
     protected void visitExitStatement(ASTNode astNode) {
+        // TODO: Implement this.
+        throw new UnsupportedOperationException("exit");
     }
 
     @Override
@@ -400,10 +459,12 @@ public class SemanticAnalyzer extends BaseVisitor {
         addCode(InstructionMnemonic.RTN, 1);
         // TODO: Check if the return type is correct.
         context.top--;
+        // Expression type does not change from the child.
     }
 
     @Override
     protected void visitNullStatement(ASTNode astNode) {
+        // Do nothing.
     }
 
     @Override
@@ -413,39 +474,53 @@ public class SemanticAnalyzer extends BaseVisitor {
 
     @Override
     protected void visitStringOutExp(ASTNode astNode) {
+        // TODO: Implement this.
         visit(astNode.getChild(0)); // StringNode
+        throw new UnsupportedOperationException("string_out");
     }
 
     @Override
     protected void visitCaseClause(ASTNode astNode) {
+        // TODO: Implement this.
         for (int i = 0; i < astNode.getSize() - 1; i++) { // list
             visit(astNode.getChild(i)); // CaseExpression
         }
         visit(astNode.getChild(astNode.getSize() - 1)); // Statement
+        throw new UnsupportedOperationException("case_clause");
     }
 
     @Override
     protected void visitDoubleDotsClause(ASTNode astNode) {
+        // TODO: Implement this.
         visit(astNode.getChild(0)); // ConstValue
         visit(astNode.getChild(1)); // ConstValue
+        throw new UnsupportedOperationException("double_dots_clause");
     }
 
     @Override
     protected void visitOtherwiseClause(ASTNode astNode) {
+        // TODO: Implement this.
         visit(astNode.getChild(0)); // Statement
+        throw new UnsupportedOperationException("otherwise_clause");
     }
 
     @Override
     protected void visitAssignmentStatement(ASTNode astNode) {
         String identifier = ((IdentifierNode) astNode.getChild(0)).getIdentifierValue(); // Name
+        visit(astNode.getChild(1)); // Expression
+
+        // Get the variable symbol and check its type.
+        // The expression result should be assignable to the variable.
         VariableSymbol variableSymbol = lookupVariable(identifier);
         if (variableSymbol == null) return;
-        visit(astNode.getChild(1)); // Expression
         if (!variableSymbol.type.isAssignable(context.expressionType)) {
             addError("Invalid type for assignment statement: expected " + variableSymbol.type +
                     ", got " + context.expressionType);
             return;
         }
+
+        // Generate instruction to save in local/global variable.
+        // This will pop the expression result.
         if (variableSymbol.isGlobal) {
             addCode(InstructionMnemonic.SGV, variableSymbol.address);
         } else {
@@ -456,12 +531,16 @@ public class SemanticAnalyzer extends BaseVisitor {
 
     @Override
     protected void visitSwapStatement(ASTNode astNode) {
+        // TODO: Implement this.
         visit(astNode.getChild(0)); // Name
         visit(astNode.getChild(1)); // Name
+        throw new UnsupportedOperationException("swap");
     }
 
     @Override
     protected void visitTrue(ASTNode astNode) {
+        // TODO: Implement this.
+        throw new UnsupportedOperationException("true");
     }
 
     // -----------------------------------------------------------------------------------------------------------------
@@ -472,6 +551,8 @@ public class SemanticAnalyzer extends BaseVisitor {
         visit(astNode.getChild(1)); // Term
         addCode(InstructionMnemonic.BOP, BinaryOpType.BLE);
         context.expressionType = SymbolTable.BOOLEAN_TYPE;
+        // Two results are popped from the stack and one result is pushed.
+        // So the top index is decreased by one for binary operators.
         context.top--;
     }
 
@@ -602,6 +683,8 @@ public class SemanticAnalyzer extends BaseVisitor {
             addCode(InstructionMnemonic.UOP, UnaryOpType.UNEG);
         }
         context.expressionType = SymbolTable.INTEGER_TYPE;
+        // One result is popped from the stack and one result is pushed.
+        // So the top index does not change for unary operators.
     }
 
     @Override
@@ -615,30 +698,37 @@ public class SemanticAnalyzer extends BaseVisitor {
 
     @Override
     protected void visitEofExpression(ASTNode astNode) {
-        // TODO
+        // TODO: Implement this.
+        throw new UnsupportedOperationException("eof_expression");
     }
 
     @Override
     protected void visitCallExpression(ASTNode astNode) {
-        FcnSymbol fcnSymbol = lookupFcn(((IdentifierNode) astNode.getChild(0)).getIdentifierValue());
+        String fcnName = ((IdentifierNode) astNode.getChild(0)).getIdentifierValue();
+
+        // Check if the function is defined.
+        FcnSymbol fcnSymbol = lookupFcn(fcnName);
         if (fcnSymbol == null) return;
 
-        // Push return value storage
+        // Push return value storage to the stack first.
+        // This will increase the stack by one.
         addCode(InstructionMnemonic.LIT, 0);
-        int top = ++context.top;
+        context.top++;
+        // After the function is called, we have to restore the top.
+        int top = context.top;
 
-        // Push parameters
+        // Push parameters and check if the parameters are correct.
         List<TypeSymbol> typeSymbols = new ArrayList<>();
         for (int i = 1; i < astNode.getSize(); i++) { // list
             visit(astNode.getChild(i)); // Expression
             typeSymbols.add(context.expressionType);
         }
-
-        // Call function
         if (!isFunctionAssignable(fcnSymbol, typeSymbols)) return;
-        addCode(InstructionMnemonic.CODE, fcnSymbol.label);
-        addCode(InstructionMnemonic.CALL, top);
+
+        // Restore the top and call the function.
         context.top = top;
+        addCode(InstructionMnemonic.CODE, fcnSymbol.label);
+        addCode(InstructionMnemonic.CALL, context.top);
     }
 
     @Override
@@ -689,8 +779,9 @@ public class SemanticAnalyzer extends BaseVisitor {
             return;
         }
 
-        Symbol symbol = symbolTable.lookup(identifierNode.getIdentifierValue());
+        // If it is a variable, then we have to load it from the stack.
         // Variables are handled depending on whether they are global or local.
+        Symbol symbol = symbolTable.lookup(identifierNode.getIdentifierValue());
         if (symbol instanceof VariableSymbol) {
             VariableSymbol variableSymbol = (VariableSymbol) symbol;
             if (variableSymbol.isGlobal) {
