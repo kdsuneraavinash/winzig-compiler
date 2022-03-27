@@ -16,13 +16,11 @@ public class WinZigParser extends AbstractParser {
         parseWinZig();
         Node winZigNode = nodeStack.pop();
         if (winZigNode instanceof ASTNode) {
-            if (nodeStack.isEmpty()) {
-                return (ASTNode) winZigNode;
-            }
-            throw new IllegalStateException("Expected ASTNode which was not found");
+            if (!nodeStack.isEmpty()) addError(winZigNode, "Internal error: More items left in parser stack.");
+            return (ASTNode) winZigNode;
         }
-        String errorMessage = String.format("[%s] but remaining %s", winZigNode, nodeStack);
-        throw new IllegalStateException(errorMessage);
+        // This should not reach.
+        throw new IllegalStateException(String.format("[%s] but remaining %s.", winZigNode, nodeStack));
     }
 
     private void parseWinZig() {
