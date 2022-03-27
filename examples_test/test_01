@@ -1,5 +1,12 @@
-program factors:
-    const a = 10, f = true;
+program copy:
+{ Echo-prints the first ten numbers on the input }
+var count, f: integer;
 begin
-    if f then output(a)
-end factors.
+count := 1;
+ while (count <= 10) do
+    begin
+       read(f);
+       output(f);
+       count := count + 1
+    end
+end copy.

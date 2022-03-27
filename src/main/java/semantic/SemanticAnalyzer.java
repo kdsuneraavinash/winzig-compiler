@@ -503,6 +503,9 @@ public class SemanticAnalyzer extends BaseVisitor {
 
         // Create all the case clauses.
         // At the end of each clause, there will be a clause to exit the case.
+        // Assumption: Cases break. After first case block, the second will not be checked.
+        // So, only one block will execute. (The first one that matches)
+        // Otherwise clause if non matches.
         for (int i = 0; i < nCaseClauses; i++) { // Caseclauses +
             int caseClausePosition = getNext();
             context.nextCaseLabel = caseClausesLabels.get(i + 1);
@@ -607,8 +610,9 @@ public class SemanticAnalyzer extends BaseVisitor {
                 addCode(InstructionMnemonic.BOP, BinaryOpType.BEQ);
                 context.top++;
             } else {
-                // TODO: Support double dots.
-                visit(caseExprBaseNode);
+                // Process double dot case expression.
+                // Top will increase by one.
+                visit(caseExprBaseNode); // ..
             }
         }
 
@@ -628,10 +632,31 @@ public class SemanticAnalyzer extends BaseVisitor {
 
     @Override
     protected void visitDoubleDotsClause(ASTNode astNode) {
-        // TODO: Implement this.
-        visit(astNode.getChild(0)); // ConstValue
-        visit(astNode.getChild(1)); // ConstValue
-        throw new UnsupportedOperationException("double_dots_clause");
+        IdentifierNode caseExprNode1 = (IdentifierNode) astNode.getChild(0); // ConstValue
+        IdentifierNode caseExprNode2 = (IdentifierNode) astNode.getChild(1); // ConstValue
+
+        // Check if both case expressions are of correct type.
+        VariableSymbol caseVariableSymbol = context.currentCaseVariableSymbol;
+        if (typeMismatch(caseVariableSymbol.typeSymbol, getConstantType(caseExprNode1))) return;
+        if (typeMismatch(caseVariableSymbol.typeSymbol, getConstantType(caseExprNode2))) return;
+        int caseValue1 = getConstantValue(caseExprNode1);
+        int caseValue2 = getConstantValue(caseExprNode2);
+
+        // Check if case values are in order (small..big)
+        if (caseValue1 > caseValue2) {
+            addError("Case value range is not in order. First value should be smaller/equal to the second.");
+        }
+
+        // Generate caseValue1 <= caseVariable and caseVariableSymbol <= caseValue2 condition.
+        // Top increases by one (last boolean value).
+        addCode(InstructionMnemonic.LIT, caseValue1);
+        addCode(InstructionMnemonic.LLV, caseVariableSymbol.address);
+        addCode(InstructionMnemonic.BOP, BinaryOpType.BLE);
+        addCode(InstructionMnemonic.LLV, caseVariableSymbol.address);
+        addCode(InstructionMnemonic.LIT, caseValue2);
+        addCode(InstructionMnemonic.BOP, BinaryOpType.BLE);
+        addCode(InstructionMnemonic.BOP, BinaryOpType.BAND);
+        context.top++;
     }
 
     @Override

@@ -1,0 +1,13 @@
+program TestPrimes:
+
+var val:integer;
+
+begin
+    val := 15;
+	case val of
+	    1..5:  output("A");
+	    3,4:  output("B");
+	end
+
+end TestPrimes.
+
