@@ -1,0 +1,6 @@
+program mod2prog:
+var n: integer;
+
+begin
+   for (n := 1; n < 10; n := n + 1) output(n);
+end mod2prog.

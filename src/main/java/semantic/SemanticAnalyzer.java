@@ -447,13 +447,25 @@ public class SemanticAnalyzer extends BaseVisitor {
         // Second statement is the condition.
         int forConditionPosition = getNext();
         visit(astNode.getChild(1)); // ForExp
+        if (!context.exprTypeSymbol.isBoolean()) addError("Invalid type for loop condition.");
 
+        // If the condition is true, go to the body.
+        // Otherwise, go to the end of for.
+        addCode(InstructionMnemonic.COND, forBodyLabel, forExitLabel);
+        attachLabel(forConditionLabel, forConditionPosition);
+        context.top--;
 
-
-        visit(astNode.getChild(1)); // ForExp
-        visit(astNode.getChild(2)); // ForStat
+        // Third statement is the update.
+        // But first we run the body, then we run the update.
+        int forBodyPosition = getNext();
         visit(astNode.getChild(3)); // Statement
-        throw new UnsupportedOperationException("for");
+        visit(astNode.getChild(2)); // ForStat
+        addCode(InstructionMnemonic.GOTO, forConditionLabel);
+        attachLabel(forBodyLabel, forBodyPosition);
+
+        // With current implementation, the for statement is always followed by a NOP.
+        // The for exit label is attached to the NOP.
+        attachLabel(forExitLabel, getNext());
     }
 
     @Override
