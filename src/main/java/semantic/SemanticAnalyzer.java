@@ -623,18 +623,22 @@ public class SemanticAnalyzer extends BaseVisitor {
         FcnSymbol fcnSymbol = lookupFcn(((IdentifierNode) astNode.getChild(0)).getIdentifierValue());
         if (fcnSymbol == null) return;
 
-        List<TypeSymbol> typeSymbols = new ArrayList<>();
-        int top = context.top;
+        // Push return value storage
+        addCode(InstructionMnemonic.LIT, 0);
+        int top = ++context.top;
 
+        // Push parameters
+        List<TypeSymbol> typeSymbols = new ArrayList<>();
         for (int i = 1; i < astNode.getSize(); i++) { // list
             visit(astNode.getChild(i)); // Expression
             typeSymbols.add(context.expressionType);
         }
 
+        // Call function
         if (!isFunctionAssignable(fcnSymbol, typeSymbols)) return;
         addCode(InstructionMnemonic.CODE, fcnSymbol.label);
         addCode(InstructionMnemonic.CALL, top);
-        context.top = top + 1;
+        context.top = top;
     }
 
     @Override
