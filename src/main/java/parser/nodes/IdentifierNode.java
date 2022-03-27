@@ -6,7 +6,7 @@ public class IdentifierNode extends TokenNode {
     private final TokenNode child;
 
     public IdentifierNode(Token token) {
-        super(token.getKind());
+        super(token.getKind(), token.getKind().getValue(), token);
         this.child = new TokenNode(token);
     }
 

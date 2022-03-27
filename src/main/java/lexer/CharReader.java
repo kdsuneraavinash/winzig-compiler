@@ -1,9 +1,11 @@
 package lexer;
 
 
+import diagnostics.TextHighlighter;
+
 import java.util.Arrays;
 
-public class CharReader {
+public class CharReader implements TextHighlighter {
     private final char[] charBuffer;
     private final int charBufferLength;
     private int markStartOffset;
@@ -53,5 +55,35 @@ public class CharReader {
 
     public boolean isEOF() {
         return offset >= charBufferLength;
+    }
+
+    public int getMarkStartOffset() {
+        return markStartOffset;
+    }
+
+    public int getOffset() {
+        return offset;
+    }
+
+    public String highlightedSegment(int startOffset, int endOffset) {
+        int prevCrOffset, nextCrOffset;
+        for (prevCrOffset = startOffset; prevCrOffset >= 0; prevCrOffset--) {
+            if (charBuffer[prevCrOffset] == '\n') break;
+
+        }
+        for (nextCrOffset = endOffset; nextCrOffset < charBufferLength; nextCrOffset++) {
+            if (charBuffer[nextCrOffset] == '\n') break;
+        }
+        StringBuilder codeSb = new StringBuilder();
+        StringBuilder highlightSb = new StringBuilder();
+        for (int i = prevCrOffset + 1; i < nextCrOffset; i++) {
+            codeSb.append(charBuffer[i]);
+            if (i >= startOffset && i < endOffset) {
+                highlightSb.append('^');
+            } else {
+                highlightSb.append(' ');
+            }
+        }
+        return codeSb.append('\n').append(highlightSb).toString();
     }
 }

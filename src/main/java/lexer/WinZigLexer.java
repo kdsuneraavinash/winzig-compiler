@@ -1,10 +1,10 @@
 package lexer;
 
-import lexer.tokens.TokenKind;
 import lexer.tokens.IdentifierToken;
 import lexer.tokens.LiteralToken;
 import lexer.tokens.Minutiae;
 import lexer.tokens.Token;
+import lexer.tokens.TokenKind;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -358,15 +358,24 @@ public class WinZigLexer extends AbstractLexer {
      */
 
     private Token createToken(TokenKind kind) {
-        return new Token(kind, getLeadingMinutiae(), processTrailingMinutiae());
+        int startOffset = charReader.getMarkStartOffset();
+        int endOffset = charReader.getOffset();
+        return new Token(kind, getLeadingMinutiae(), processTrailingMinutiae(),
+                startOffset, endOffset);
     }
 
     private Token createIdentifierToken() {
-        return new IdentifierToken(charReader.getMarkedChars(), getLeadingMinutiae(), processTrailingMinutiae());
+        int startOffset = charReader.getMarkStartOffset();
+        int endOffset = charReader.getOffset();
+        return new IdentifierToken(charReader.getMarkedChars(), getLeadingMinutiae(), processTrailingMinutiae(),
+                startOffset, endOffset);
     }
 
     private Token createLiteralToken(TokenKind kind) {
-        return new LiteralToken(kind, charReader.getMarkedChars(), getLeadingMinutiae(), processTrailingMinutiae());
+        int startOffset = charReader.getMarkStartOffset();
+        int endOffset = charReader.getOffset();
+        return new LiteralToken(kind, charReader.getMarkedChars(), getLeadingMinutiae(), processTrailingMinutiae(),
+                startOffset, endOffset);
     }
 
     private Minutiae createMinutiae(TokenKind kind) {

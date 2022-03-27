@@ -1,12 +1,13 @@
 package lexer;
 
+import diagnostics.TextHighlighter;
 import lexer.tokens.Minutiae;
 import lexer.tokens.Token;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public abstract class AbstractLexer {
+public abstract class AbstractLexer implements TextHighlighter {
     protected final CharReader charReader;
     protected List<Minutiae> leadingMinutiae;
 
@@ -41,5 +42,10 @@ public abstract class AbstractLexer {
 
     protected static boolean isIdentifierChar(int c) {
         return isAlphaChar(c) || isUnderscore(c) || isDigit(c);
+    }
+
+    @Override
+    public String highlightedSegment(int startOffset, int endOffset) {
+        return charReader.highlightedSegment(startOffset, endOffset);
     }
 }

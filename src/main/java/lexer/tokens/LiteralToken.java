@@ -5,8 +5,9 @@ import java.util.List;
 public class LiteralToken extends Token {
     private final String value;
 
-    public LiteralToken(TokenKind kind, String value, List<Minutiae> leading, List<Minutiae> trailing) {
-        super(kind, leading, trailing);
+    public LiteralToken(TokenKind kind, String value, List<Minutiae> leading, List<Minutiae> trailing,
+                        int startOffset, int endOffset) {
+        super(kind, leading, trailing, startOffset, endOffset);
         this.value = value;
     }
 

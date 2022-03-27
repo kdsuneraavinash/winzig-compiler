@@ -1,4 +1,6 @@
 package parser.nodes;
 
-public interface Node {
+import diagnostics.Highlightable;
+
+public interface Node extends Highlightable {
 }

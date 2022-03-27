@@ -1,6 +1,7 @@
 package parser;
 
 import lexer.AbstractLexer;
+import diagnostics.TextHighlighter;
 import lexer.tokens.Token;
 import lexer.tokens.TokenKind;
 import parser.nodes.ASTNode;
@@ -11,7 +12,7 @@ import parser.nodes.NodeKind;
 import java.util.Stack;
 import java.util.function.Supplier;
 
-public abstract class AbstractParser {
+public abstract class AbstractParser implements TextHighlighter {
     protected final Stack<Node> nodeStack;
     protected final TokenReader tokenReader;
 
@@ -76,5 +77,10 @@ public abstract class AbstractParser {
 
     protected TokenKind peekNextKind(int skip) {
         return tokenReader.peek(skip).getKind();
+    }
+
+    @Override
+    public String highlightedSegment(int startOffset, int endOffset) {
+        return tokenReader.highlightedSegment(startOffset, endOffset);
     }
 }

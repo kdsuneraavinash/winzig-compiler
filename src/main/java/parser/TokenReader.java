@@ -2,9 +2,10 @@ package parser;
 
 
 import lexer.AbstractLexer;
+import diagnostics.TextHighlighter;
 import lexer.tokens.Token;
 
-public class TokenReader {
+public class TokenReader implements TextHighlighter {
     private final AbstractLexer lexer;
     private final CircularBuffer<Token> fetchedTokens;
 
@@ -26,5 +27,10 @@ public class TokenReader {
             return fetchedTokens.remove();
         }
         return lexer.read();
+    }
+
+    @Override
+    public String highlightedSegment(int startOffset, int endOffset) {
+        return lexer.highlightedSegment(startOffset, endOffset);
     }
 }

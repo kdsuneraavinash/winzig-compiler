@@ -1,20 +1,22 @@
 package parser.nodes;
 
+import diagnostics.TextHighlighter;
 import lexer.tokens.Token;
 import lexer.tokens.TokenKind;
 
 public class TokenNode implements Node {
     protected final TokenKind kind;
     protected final String value;
+    protected final Token token;
 
     public TokenNode(Token token) {
-        this.kind = token.getKind();
-        this.value = token.getValue();
+        this(token.getKind(), token.getValue(), token);
     }
 
-    protected TokenNode(TokenKind kind) {
+    protected TokenNode(TokenKind kind, String value, Token token) {
         this.kind = kind;
-        this.value = kind.getValue();
+        this.value = value;
+        this.token = token;
     }
 
     public TokenKind getKind() {
@@ -28,5 +30,10 @@ public class TokenNode implements Node {
     @Override
     public String toString() {
         return String.format("%s(0)", value);
+    }
+
+    @Override
+    public String highlighted(TextHighlighter highlighter) {
+        return token.highlighted(highlighter);
     }
 }
