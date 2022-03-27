@@ -11,6 +11,7 @@ public class Context {
     public List<String> newVars;
     public List<String> newTypeLits;
     public List<TypeSymbol> paramTypes;
+    public String stringExp;
     public int top;
 
     public Context() {
@@ -18,6 +19,7 @@ public class Context {
         newVars = new ArrayList<>();
         newTypeLits = new ArrayList<>();
         paramTypes = new ArrayList<>();
+        stringExp = "";
         top = 0;
     }
 }

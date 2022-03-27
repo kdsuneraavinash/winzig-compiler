@@ -232,6 +232,13 @@ public class SemanticAnalyzer extends BaseVisitor {
 
         // Then enter body.
         visit(astNode.getChild(6)); // Body
+
+        // Always add a return instruction at the end of the function.
+        // This is required to prevent the compiler from generating an error.
+        // This will increase and decrease top, so no changes are required.
+        addCode(InstructionMnemonic.LIT, 0);
+        addCode(InstructionMnemonic.RTN, 1);
+
         symbolTable.endLocalScope();
 
         // Attach labels.
@@ -325,16 +332,22 @@ public class SemanticAnalyzer extends BaseVisitor {
             visit(astNode.getChild(i)); // OutExp
 
             // Generate correct output depending on the expression type.
-            // TODO: Handle the case of string output.
             if (context.expressionType.isInteger()) {
                 addCode(InstructionMnemonic.SOS, OperatingSystemOpType.OUTPUT);
+                context.top--;
             } else if (context.expressionType.isChar()) {
                 addCode(InstructionMnemonic.SOS, OperatingSystemOpType.OUTPUTC);
+                context.top--;
+            } else if (context.expressionType.isString()) {
+                // Since the string expression is not added to the generated code,
+                // we have to add them manually. Top will not change since adding and removing.
+                for (int j = 0; j < context.stringExp.length(); j++) {
+                    addCode(InstructionMnemonic.LIT, (int) context.stringExp.charAt(j));
+                    addCode(InstructionMnemonic.SOS, OperatingSystemOpType.OUTPUTC);
+                }
             } else {
                 addError("Invalid type for output statement.");
-                continue;
             }
-            context.top--;
         }
         // New line at the end of output.
         addCode(InstructionMnemonic.SOS, OperatingSystemOpType.OUTPUTL);
@@ -470,13 +483,14 @@ public class SemanticAnalyzer extends BaseVisitor {
     @Override
     protected void visitIntegerOutExp(ASTNode astNode) {
         visit(astNode.getChild(0)); // Expression
+        // Expression type does not change.
     }
 
     @Override
     protected void visitStringOutExp(ASTNode astNode) {
-        // TODO: Implement this.
-        visit(astNode.getChild(0)); // StringNode
-        throw new UnsupportedOperationException("string_out");
+        String literalWithQuotes = ((IdentifierNode) astNode.getChild(0)).getIdentifierValue();
+        context.stringExp = literalWithQuotes.substring(1, literalWithQuotes.length() - 1); // StringNode
+        context.expressionType = SymbolTable.STRING_TYPE;
     }
 
     @Override

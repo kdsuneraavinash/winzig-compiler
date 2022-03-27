@@ -2,6 +2,8 @@ import lexer.CharReader;
 import lexer.WinZigLexer;
 import parser.WinZigParser;
 import parser.nodes.ASTNode;
+import parser.nodes.IdentifierNode;
+import parser.nodes.Node;
 import semantic.SemanticAnalyzer;
 
 import java.io.File;
@@ -15,6 +17,20 @@ public class WinZig implements Callable<Integer> {
         this.file = file;
     }
 
+    public static void printTree(ASTNode node, int depth) {
+        System.out.println(". ".repeat(depth) + node.toString());
+        for (Node child : node.getChildren()) {
+            if (child instanceof ASTNode) {
+                printTree((ASTNode) child, depth + 1);
+            } else if (child instanceof IdentifierNode) {
+                System.out.println(". ".repeat(depth + 1) + child);
+                String value = ((IdentifierNode) child).getIdentifierValue();
+                System.out.println(". ".repeat(depth + 2) + String.format("%s(0)", value));
+            }
+        }
+    }
+
+
     @Override
     public Integer call() throws Exception {
         String sourceCode = Files.readString(file.toPath());
@@ -23,6 +39,7 @@ public class WinZig implements Callable<Integer> {
         WinZigParser parser = new WinZigParser(lexer);
         SemanticAnalyzer analyzer = new SemanticAnalyzer();
         ASTNode node = parser.parse();
+//        printTree(node, 0);
         analyzer.analyze(node);
         return 0;
     }

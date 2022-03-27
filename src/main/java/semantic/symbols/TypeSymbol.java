@@ -30,6 +30,10 @@ public class TypeSymbol extends Symbol {
         return !isInteger() && !isChar() && !isBoolean();
     }
 
+    public boolean isString() {
+        return equals(SymbolTable.STRING_TYPE);
+    }
+
     public boolean isAssignable(TypeSymbol type) {
         return equals(type);
     }

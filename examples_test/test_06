@@ -10,5 +10,5 @@ end sumF;
 
 begin
    read(n);
-   output (sumF(n), n)
+   output (sumF(n), " sep ", n)
 end addition.
