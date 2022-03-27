@@ -496,10 +496,11 @@ public class SemanticAnalyzer extends BaseVisitor {
         // The end case label will be used by final case clause.
         List<Label> caseClausesLabels = new ArrayList<>();
         Label caseClausesEndLabel = new Label();
+        Label caseOtherwiseLabel = hasOtherwise ? new Label() : caseClausesEndLabel;
         for (int i = 0; i < nCaseClauses; i++) {
             caseClausesLabels.add(new Label());
         }
-        caseClausesLabels.add(caseClausesEndLabel);
+        caseClausesLabels.add(caseOtherwiseLabel);
 
         // Create all the case clauses.
         // At the end of each clause, there will be a clause to exit the case.
@@ -514,8 +515,12 @@ public class SemanticAnalyzer extends BaseVisitor {
             attachLabel(caseClausesLabels.get(i), caseClausePosition);
         }
 
-        // TODO: Support otherwise clause.
+        // Visit otherwise clause.
+        int caseOtherwisePosition = getNext();
         visit(astNode.getChild(astNode.getSize() - 1)); // OtherwiseClause
+        attachLabel(caseOtherwiseLabel, caseOtherwisePosition);
+
+        // Restore previous case variable.
         context.currentCaseVariableSymbol = previousCaseVariableSymbol;
 
         // With current implementation, the case statement is always followed by a NOP.
@@ -662,9 +667,7 @@ public class SemanticAnalyzer extends BaseVisitor {
 
     @Override
     protected void visitOtherwiseClause(ASTNode astNode) {
-        // TODO: Implement this.
         visit(astNode.getChild(0)); // Statement
-        throw new UnsupportedOperationException("otherwise_clause");
     }
 
     @Override

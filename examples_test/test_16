@@ -1,0 +1,14 @@
+program TestPrimes:
+
+var val:integer;
+
+begin
+    val := 50;
+	case val of
+	    1..10:  output("A");
+	    17:  output("E");
+	    otherwise output("X")
+	end
+
+end TestPrimes.
+
