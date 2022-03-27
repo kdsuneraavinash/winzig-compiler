@@ -588,10 +588,24 @@ public class SemanticAnalyzer extends BaseVisitor {
         String identifier = ((IdentifierNode) astNode.getChild(0)).getIdentifierValue(); // Name
         visit(astNode.getChild(1)); // Expression
 
+        // TODO: Do we need to check if the variable is declared and return error if not?
+        // If the variable does not exist, we ignore the assignment.
+        // We have to use base lookup method to avoid writing the error.
+        Symbol symbol = symbolTable.lookup(identifier);
+        if (symbol == null) {
+            // Variable does not exist. We ignore the assignment by popping it.
+            addCode(InstructionMnemonic.POP, 1);
+            context.top--;
+            return;
+        } else if (!(symbol instanceof VariableSymbol)) {
+            // Symbol exists but is not a variable.
+            addError("Expected a variable for the assignment, got " + symbol.symbolType + ".");
+            return;
+        }
+
         // Get the variable symbol and check its type.
         // The expression result should be assignable to the variable.
-        VariableSymbol variableSymbol = lookupVariable(identifier);
-        if (variableSymbol == null) return;
+        VariableSymbol variableSymbol = (VariableSymbol) symbol;
         if (!variableSymbol.type.isAssignable(context.exprTypeSymbol)) {
             addError("Invalid type for assignment statement: expected " + variableSymbol.type +
                     ", got " + context.exprTypeSymbol);
