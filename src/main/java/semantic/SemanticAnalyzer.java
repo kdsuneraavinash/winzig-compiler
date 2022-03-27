@@ -516,12 +516,12 @@ public class SemanticAnalyzer extends BaseVisitor {
         visit(astNode.getChild(astNode.getSize() - 1)); // OtherwiseClause
         attachLabel(caseOtherwiseLabel, caseOtherwisePosition);
 
-        // Restore previous case variable.
+        // Restore previous case variable and pop the case expression value.
+        int caseClausesEndPosition = getNext();
+        addCode(InstructionMnemonic.POP, 1);
+        context.top--;
+        attachLabel(caseClausesEndLabel, caseClausesEndPosition);
         context.currentCaseVariableSymbol = previousCaseVariableSymbol;
-
-        // With current implementation, the case statement is always followed by a NOP.
-        // The case clauses end label is attached to the NOP.
-        attachLabel(caseClausesEndLabel, getNext());
     }
 
     @Override
