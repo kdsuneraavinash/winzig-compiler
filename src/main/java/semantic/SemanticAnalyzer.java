@@ -108,8 +108,6 @@ public class SemanticAnalyzer extends BaseVisitor {
         IdentifierNode identifierNode = (IdentifierNode) astNode.getChild(0); // Name
         IdentifierNode valueNode = (IdentifierNode) astNode.getChild(1); // ConstValue
         String identifier = identifierNode.getIdentifierValue();
-        String value = valueNode.getIdentifierValue();
-        TokenKind tokenKind = valueNode.getKind();
 
         // Constants cannot be defined twice in the same scope.
         if (symbolTable.alreadyDefinedInScope(identifier)) {
@@ -247,7 +245,7 @@ public class SemanticAnalyzer extends BaseVisitor {
             if (newVarSymbol == null) continue;
             // Top is already increased by variable declaration.
             // So we do not need to change the top to denote the pushing of params.
-            context.paramTypeSymbols.add(newVarSymbol.type);
+            context.paramTypeSymbols.add(newVarSymbol.typeSymbol);
         }
     }
 
@@ -517,12 +515,12 @@ public class SemanticAnalyzer extends BaseVisitor {
             // Here top increases by one each time.
             // But, since the next instruction saves the value, top will decrease again.
             // So overall, no change to the top.
-            if (variableSymbol.type.isInteger()) {
+            if (variableSymbol.typeSymbol.isInteger()) {
                 addCode(InstructionMnemonic.SOS, OperatingSystemOpType.INPUT);
-            } else if (variableSymbol.type.isChar()) {
+            } else if (variableSymbol.typeSymbol.isChar()) {
                 addCode(InstructionMnemonic.SOS, OperatingSystemOpType.INPUTC);
             } else {
-                addError("Invalid type for read statement: " + variableSymbol.type);
+                addError("Invalid type for read statement: " + variableSymbol.typeSymbol);
                 continue;
             }
             addCode(variableSymbol.isGlobal ? InstructionMnemonic.SGV : InstructionMnemonic.SLV,
@@ -639,7 +637,7 @@ public class SemanticAnalyzer extends BaseVisitor {
         // Get the variable symbol and check its type.
         // The expression result should be assignable to the variable.
         VariableSymbol variableSymbol = (VariableSymbol) symbol;
-        if (typeMismatch(variableSymbol.type, context.exprTypeSymbol)) return;
+        if (typeMismatch(variableSymbol.typeSymbol, context.exprTypeSymbol)) return;
 
         // Generate instruction to save in local/global variable.
         // This will pop the expression result.
@@ -657,7 +655,7 @@ public class SemanticAnalyzer extends BaseVisitor {
         VariableSymbol variableSymbol1 = lookupVariable(identifier1);
         VariableSymbol variableSymbol2 = lookupVariable(identifier2);
         if (variableSymbol1 == null || variableSymbol2 == null) return;
-        if (typeMismatch(variableSymbol1.type, variableSymbol2.type)) return;
+        if (typeMismatch(variableSymbol1.typeSymbol, variableSymbol2.typeSymbol)) return;
 
         // Load var1 and var2. Then save var1 in var2 and var2 in var1.
         // Top will not change.
@@ -923,7 +921,7 @@ public class SemanticAnalyzer extends BaseVisitor {
             VariableSymbol variableSymbol = (VariableSymbol) symbol;
             addCode(variableSymbol.isGlobal ? InstructionMnemonic.LGV : InstructionMnemonic.LLV,
                     variableSymbol.address);
-            context.exprTypeSymbol = variableSymbol.type;
+            context.exprTypeSymbol = variableSymbol.typeSymbol;
             context.top++;
             return;
         }
