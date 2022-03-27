@@ -36,6 +36,7 @@ public class SymbolTable {
     public static void initializeSymbols(Map<String, Symbol> symbols) {
         symbols.clear();
         // Built-in types and constants.
+        // TODO: Restrict redefinition without adding these to local symbols.
         symbols.put("integer", INTEGER_TYPE);
         symbols.put("char", CHAR_TYPE);
         symbols.put("boolean", BOOLEAN_TYPE);

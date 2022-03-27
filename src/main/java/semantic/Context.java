@@ -1,7 +1,9 @@
 package semantic;
 
+import semantic.attrs.Label;
 import semantic.symbols.FcnSymbol;
 import semantic.symbols.TypeSymbol;
+import semantic.symbols.VariableSymbol;
 import semantic.table.SymbolTable;
 
 import java.util.ArrayList;
@@ -20,6 +22,9 @@ public class Context {
     public FcnSymbol activeFcnSymbol;
     // All the new function parameters.
     public List<TypeSymbol> paramTypeSymbols;
+
+    public VariableSymbol currentCaseVariableSymbol;
+    public Label nextCaseLabel;
     // Top of the variable stack.
     public int top;
 
@@ -30,6 +35,8 @@ public class Context {
         stringExpression = "";
         exprTypeSymbol = SymbolTable.UNDEFINED_TYPE;
         activeFcnSymbol = null;
+        currentCaseVariableSymbol = null;
+        nextCaseLabel = null;
         top = 0;
     }
 }

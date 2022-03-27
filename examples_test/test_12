@@ -1,0 +1,13 @@
+program TestPrimes:
+
+var val:boolean;
+
+begin
+    val := true;
+	case val of
+	    true:  output(1);
+	    false: output(0);
+	end
+
+end TestPrimes.
+

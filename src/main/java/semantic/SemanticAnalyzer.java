@@ -4,6 +4,7 @@ import lexer.tokens.TokenKind;
 import parser.nodes.ASTNode;
 import parser.nodes.IdentifierNode;
 import parser.nodes.Node;
+import parser.nodes.NodeKind;
 import semantic.attrs.BinaryOpType;
 import semantic.attrs.Instruction;
 import semantic.attrs.InstructionMnemonic;
@@ -476,31 +477,47 @@ public class SemanticAnalyzer extends BaseVisitor {
     @Override
     protected void visitCaseStatement(ASTNode astNode) {
         visit(astNode.getChild(0)); // Expression
-        TypeSymbol exprType = context.exprTypeSymbol;
 
-        // Case clauses except expression and otherwise.
-        int nCaseClauses = astNode.getSize() - 2;
-        List<Label> caseLabels = new ArrayList<>();
+        // Create a pseudo variable to keep track of expression.
+        // If there is a previous case variable, we track it. (Can be nested case statements)
+        VariableSymbol previousCaseVariableSymbol = context.currentCaseVariableSymbol;
+        context.currentCaseVariableSymbol = new VariableSymbol("~generated~",
+                context.exprTypeSymbol, context.top, false);
+
+        // If the last node is of kind otherwise, there is an otherwise clause.
+        // There will always be at least one node, so no checking is required.
+        // Number of case clauses will depend on whether there is an otherwise clause.
+        ASTNode lastNode = (ASTNode) astNode.getChild(astNode.getSize() - 1);
+        boolean hasOtherwise = NodeKind.OTHERWISE_CLAUSE.equals(lastNode.getKind());
+        int nCaseClauses = hasOtherwise ? astNode.getSize() - 2 : astNode.getSize() - 1;
+
+        // Case clauses except expression and otherwise (if exists).
+        // Add a label for each case and end of cases.
+        // The end case label will be used by final case clause.
+        List<Label> caseClausesLabels = new ArrayList<>();
+        Label caseClausesEndLabel = new Label();
         for (int i = 0; i < nCaseClauses; i++) {
-            caseLabels.add(new Label());
+            caseClausesLabels.add(new Label());
+        }
+        caseClausesLabels.add(caseClausesEndLabel);
+
+        // Create all the case clauses.
+        // At the end of each clause, there will be a clause to exit the case.
+        for (int i = 0; i < nCaseClauses; i++) { // Caseclauses +
+            int caseClausePosition = getNext();
+            context.nextCaseLabel = caseClausesLabels.get(i + 1);
+            visit(astNode.getChild(i + 1)); // Caseclause
+            addCode(InstructionMnemonic.GOTO, caseClausesEndLabel);
+            attachLabel(caseClausesLabels.get(i), caseClausePosition);
         }
 
-
-        for (int i = 1; i < astNode.getSize() - 1; i++) { // Caseclauses +
-            Label caseLabel = new Label();
-            int casePosition = getNext();
-
-            visit(astNode.getChild(i)); // Caseclause
-            if (typeMismatch(exprType, context.exprTypeSymbol)) return;
-
-            // Store the label position for each case clause.
-            attachLabel(caseLabel, casePosition);
-            caseLabels.add(caseLabel);
-        }
-
-
+        // TODO: Support otherwise clause.
         visit(astNode.getChild(astNode.getSize() - 1)); // OtherwiseClause
-        throw new UnsupportedOperationException("case");
+        context.currentCaseVariableSymbol = previousCaseVariableSymbol;
+
+        // With current implementation, the case statement is always followed by a NOP.
+        // The case clauses end label is attached to the NOP.
+        attachLabel(caseClausesEndLabel, getNext());
     }
 
     @Override
@@ -567,33 +584,46 @@ public class SemanticAnalyzer extends BaseVisitor {
 
     @Override
     protected void visitCaseClause(ASTNode astNode) {
+        // This uses the puedo variable created using the case expression value.
+        // Each case expression becomes equality checks combined with or operators.
+        // Finally, depending on the expression result, this will go to case body or next case.
 
-        // The top of variable stack should be the expression to check.
-        // Always add the const to check, then compare, if equal, jump to case body.
-        // If not equal, push the expression again and check if there are more expressions.
-        // If there are more expressions, jump do the same. Otherwise, simply exit.
-        // At the end of case clause, stack top should be the same and expression should be on top.
+        Label caseBodyLabel = new Label();
+        Label nextCaseLabel = context.nextCaseLabel;
+        VariableSymbol caseVariableSymbol = context.currentCaseVariableSymbol;
 
-        for (int i = 0; i < astNode.getSize() - 1; i++) { // list
+        // Push n variable loads and equality operators.
+        int nCaseExpressions = astNode.getSize() - 1;
+        for (int i = 0; i < nCaseExpressions; i++) { // list
             Node caseExprBaseNode = astNode.getChild(i); // CaseExpression
             if (caseExprBaseNode instanceof IdentifierNode) {
-                // Simple case value.
                 IdentifierNode caseExprNode = (IdentifierNode) caseExprBaseNode;
-                int caseExprValue = getConstantValue(caseExprNode);
-                TypeSymbol caseExprType = getConstantType(caseExprNode);
-                if (caseExprType == null) continue;
+                TypeSymbol caseExprTypeSymbol = getConstantType(caseExprNode);
+                if (caseExprTypeSymbol == null) continue;
+                if (typeMismatch(caseVariableSymbol.typeSymbol, caseExprTypeSymbol)) continue;
 
-
+                addCode(InstructionMnemonic.LLV, caseVariableSymbol.address);
+                addCode(InstructionMnemonic.LIT, getConstantValue(caseExprNode));
+                addCode(InstructionMnemonic.BOP, BinaryOpType.BEQ);
+                context.top++;
             } else {
                 // TODO: Support double dots.
                 visit(caseExprBaseNode);
             }
-
-
-//            addCode(InstructionMnemonic.LIT, OperatingSystemOpType.CONST);
         }
+
+        // Add n - 1 OR conditions to join all previous booleans.
+        for (int i = 0; i < nCaseExpressions - 1; i++) {
+            addCode(InstructionMnemonic.BOP, BinaryOpType.BOR);
+            context.top--;
+        }
+
+        addCode(InstructionMnemonic.COND, caseBodyLabel, nextCaseLabel);
+        context.top--;
+
+        int caseBodyPosition = getNext();
         visit(astNode.getChild(astNode.getSize() - 1)); // Statement
-        throw new UnsupportedOperationException("case_clause");
+        attachLabel(caseBodyLabel, caseBodyPosition);
     }
 
     @Override

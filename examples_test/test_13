@@ -1,0 +1,29 @@
+program TestPrimes:
+
+var val:boolean; bal: integer;
+
+begin
+    val := true;
+    bal := 2;
+	case val of
+	    true:
+	        begin
+                output(1);
+                case bal of
+                    0: output("bal", 10);
+                    1: output("bal", 11);
+                    2: output("bal", 12);
+                end
+	        end;
+	    false:
+	        begin
+                output(0);
+                case bal of
+                    0: output("bal", 20);
+                    1: output("bal", 21);
+                    2: output("bal", 22);
+                end
+	        end;
+	end
+
+end TestPrimes.
