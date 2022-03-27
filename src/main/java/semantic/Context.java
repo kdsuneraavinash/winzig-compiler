@@ -8,12 +8,19 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Context {
+    // All the new variables.
     public List<String> newVarNames;
+    // All the new literals of the current type.
     public List<String> newTypeLiteralNames;
+    // String out expression in output statement.
     public String stringExpression;
+    // The expression type of the last met expression.
     public TypeSymbol exprTypeSymbol;
+    // Active function currently. Only set in function body.
     public FcnSymbol activeFcnSymbol;
+    // All the new function parameters.
     public List<TypeSymbol> paramTypeSymbols;
+    // Top of the variable stack.
     public int top;
 
     public Context() {

@@ -344,6 +344,13 @@ public class SemanticAnalyzer extends BaseVisitor {
             } else {
                 addError("Invalid type for output statement.");
             }
+
+            // Assumption: For every value, except the last, manually insert a space.
+            // This will not change top.
+            if (i < astNode.getSize() - 1) {
+                addCode(InstructionMnemonic.LIT, (int) ' ');
+                addCode(InstructionMnemonic.SOS, OperatingSystemOpType.OUTPUTC);
+            }
         }
         // New line at the end of output.
         addCode(InstructionMnemonic.SOS, OperatingSystemOpType.OUTPUTL);
