@@ -1,0 +1,12 @@
+program mod2prog:
+var n: char; m: integer;
+
+begin
+   loop
+   begin
+      read(n);
+      m := 0 + n;
+      output(m)
+   end
+   pool
+end mod2prog.

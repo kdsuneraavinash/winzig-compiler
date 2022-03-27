@@ -398,8 +398,8 @@ public class SemanticAnalyzer extends BaseVisitor {
         // Execute the body and go back to the condition.
         int whileBodyPosition = getNext();
         visit(astNode.getChild(1)); // Statement
-        attachLabel(whileBodyLabel, whileBodyPosition);
         addCode(InstructionMnemonic.GOTO, whileConditionLabel);
+        attachLabel(whileBodyLabel, whileBodyPosition);
 
         // With current implementation, the while statement is always followed by a NOP.
         // The while exit label is attached to the NOP.
@@ -428,11 +428,15 @@ public class SemanticAnalyzer extends BaseVisitor {
 
     @Override
     protected void visitLoopStatement(ASTNode astNode) {
-        // TODO: Implement this.
+        Label loopStartLabel = new Label();
+        int loopStartPosition = getNext();
+
+        // Execute the body and go back to the condition.
         for (int i = 0; i < astNode.getSize(); i++) { // list
             visit(astNode.getChild(i)); // Statement
         }
-        throw new UnsupportedOperationException("loop");
+        addCode(InstructionMnemonic.GOTO, loopStartLabel);
+        attachLabel(loopStartLabel, loopStartPosition);
     }
 
     @Override
