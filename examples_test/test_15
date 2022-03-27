@@ -5,8 +5,13 @@ var val:integer;
 begin
     val := 15;
 	case val of
-	    1..5:  output("A");
-	    3,4:  output("B");
+	    1..10:  output("A");
+	    11..20:  output("B");
+	    21..30:  output("C");
+	    13..17:  output("D");
+	    11,12:  output("E");
+        14,15,16: output("F");
+	    17:  output("E");
 	end
 
 end TestPrimes.
