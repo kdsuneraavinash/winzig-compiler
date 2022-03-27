@@ -408,12 +408,26 @@ public class SemanticAnalyzer extends BaseVisitor {
 
     @Override
     protected void visitRepeatStatement(ASTNode astNode) {
-        // TODO: Implement this.
+        Label repeatBodyLabel = new Label();
+        Label repeatExitLabel = new Label();
+
+        // Execute the body and go back to the condition.
+        int repeatBodyPosition = getNext();
         for (int i = 0; i < astNode.getSize() - 1; i++) { // list
             visit(astNode.getChild(i)); // Statement
         }
+        attachLabel(repeatBodyLabel, repeatBodyPosition);
+
+        // Depending on the condition value, go to either the body or the end of while.
+        // Top will decrease by one because we pop the condition value.
+        int repeatConditionPosition = getNext();
         visit(astNode.getChild(astNode.getSize() - 1)); // Expression
-        throw new UnsupportedOperationException("repeat");
+        addCode(InstructionMnemonic.COND, repeatExitLabel, repeatBodyLabel);
+        context.top--;
+
+        // With current implementation, the repeat statement is always followed by a NOP.
+        // The repeat exit label is attached to the NOP.
+        attachLabel(repeatExitLabel, getNext());
     }
 
     @Override
