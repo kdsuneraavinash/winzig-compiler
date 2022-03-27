@@ -456,8 +456,7 @@ public class SemanticAnalyzer extends BaseVisitor {
 
     @Override
     protected void visitExitStatement(ASTNode astNode) {
-        // TODO: Implement this.
-        throw new UnsupportedOperationException("exit");
+        addCode(InstructionMnemonic.HALT);
     }
 
     @Override
