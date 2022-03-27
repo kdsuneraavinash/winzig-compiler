@@ -84,10 +84,11 @@ public class SymbolTable {
      *
      * @param name the name of the type.
      */
-    public void enterTypeSymbol(String name) {
+    public TypeSymbol enterTypeSymbol(String name) {
         TypeSymbol typeSymbol = new TypeSymbol(name, !isInLocalScope);
         if (isInLocalScope) localSymbols.put(name, typeSymbol);
         else globalSymbols.put(name, typeSymbol);
+        return typeSymbol;
     }
 
     /**
@@ -97,9 +98,10 @@ public class SymbolTable {
      * @param label      the label of the function.
      * @param returnType the return type of the function.
      */
-    public void enterFcnSymbol(String name, Label label, List<TypeSymbol> paramTypes, TypeSymbol returnType) {
-        assert !isInLocalScope;
+    public FcnSymbol enterFcnSymbol(String name, Label label, List<TypeSymbol> paramTypes, TypeSymbol returnType) {
+        FcnSymbol fcnSymbol = new FcnSymbol(name, label, paramTypes, returnType);
         globalSymbols.put(name, new FcnSymbol(name, label, paramTypes, returnType));
+        return fcnSymbol;
     }
 
     // -----------------------------------------------------------------------------------------------------------------
