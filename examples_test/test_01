@@ -1,4 +1,5 @@
 program factors:
-    const a = 10;
+    const a = 10, f = true;
 begin
+    if f then output(a)
 end factors.

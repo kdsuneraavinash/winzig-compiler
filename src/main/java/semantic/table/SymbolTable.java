@@ -18,6 +18,8 @@ public class SymbolTable {
     public static final TypeSymbol BOOLEAN_TYPE = new TypeSymbol("boolean", true);
     public static final TypeSymbol STRING_TYPE = new TypeSymbol("~STRING~", true); // Internal use only
     public static final TypeSymbol UNDEFINED_TYPE = new TypeSymbol("~UNDEFINED~", true); // Internal use only
+    public static final ConstantSymbol FALSE_CONSTANT = new ConstantSymbol("false", BOOLEAN_TYPE, 0, true);
+    public static final ConstantSymbol TRUE_CONSTANT = new ConstantSymbol("true", BOOLEAN_TYPE, 1, true);
 
     private final Map<String, Symbol> globalSymbols;
     private final Map<String, Symbol> localSymbols;
@@ -25,11 +27,20 @@ public class SymbolTable {
 
     public SymbolTable() {
         this.globalSymbols = new HashMap<>();
-        this.globalSymbols.put("integer", INTEGER_TYPE);
-        this.globalSymbols.put("char", CHAR_TYPE);
-        this.globalSymbols.put("boolean", BOOLEAN_TYPE);
         this.localSymbols = new HashMap<>();
         this.isInLocalScope = false;
+        initializeSymbols(this.globalSymbols);
+        initializeSymbols(this.localSymbols);
+    }
+
+    public static void initializeSymbols(Map<String, Symbol> symbols) {
+        symbols.clear();
+        // Built-in types and constants.
+        symbols.put("integer", INTEGER_TYPE);
+        symbols.put("char", CHAR_TYPE);
+        symbols.put("boolean", BOOLEAN_TYPE);
+        symbols.put("false", FALSE_CONSTANT);
+        symbols.put("true", TRUE_CONSTANT);
     }
 
     /**
@@ -38,7 +49,7 @@ public class SymbolTable {
      */
     public void beginLocalScope() {
         assert !this.isInLocalScope;
-        this.localSymbols.clear();
+        initializeSymbols(this.localSymbols);
         this.isInLocalScope = true;
     }
 
@@ -48,7 +59,7 @@ public class SymbolTable {
      */
     public void endLocalScope() {
         assert this.isInLocalScope;
-        this.localSymbols.clear();
+        initializeSymbols(this.localSymbols);
         this.isInLocalScope = false;
     }
 
