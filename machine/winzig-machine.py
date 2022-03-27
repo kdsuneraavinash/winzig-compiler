@@ -219,7 +219,7 @@ def pop_n_Lf(n):
 
 def str_data():
     if Data_memory:
-        return str([Data_memory.get(i, -1) for i in range(1, max(Data_memory.keys()) + 1)][: STR + 1])
+        return str([Data_memory.get(i, -1) for i in range(1, max(Data_memory.keys()) + 1)][:STR])
     return ""
 
 
