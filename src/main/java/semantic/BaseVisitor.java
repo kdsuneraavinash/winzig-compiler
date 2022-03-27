@@ -1,10 +1,11 @@
 package semantic;
 
+import diagnostics.DiagnosticCollector;
 import parser.nodes.ASTNode;
 import parser.nodes.IdentifierNode;
 import parser.nodes.Node;
 
-public abstract class BaseVisitor {
+public abstract class BaseVisitor extends DiagnosticCollector {
     protected Node currentNode;
 
     protected BaseVisitor() {

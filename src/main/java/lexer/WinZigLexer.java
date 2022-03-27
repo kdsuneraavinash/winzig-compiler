@@ -75,7 +75,8 @@ public class WinZigLexer extends AbstractLexer {
                 if (isIdentifierInitialChar(c)) {
                     return processKeywordOrIdentifier();
                 }
-                throw new IllegalStateException();
+                // Unexpected character: return a minutiae token
+                return createErrorToken("Unexpected character: %c", c);
         }
     }
 
@@ -151,7 +152,7 @@ public class WinZigLexer extends AbstractLexer {
                 return createLiteralToken(TokenKind.CHAR_LITERAL);
             }
         }
-        throw new IllegalStateException();
+        return createErrorToken("Expected character literal in the form 'c'.");
     }
 
     private Token processString() {
@@ -162,7 +163,7 @@ public class WinZigLexer extends AbstractLexer {
                 return createLiteralToken(TokenKind.STRING_LITERAL);
             }
         }
-        throw new IllegalStateException();
+        return createErrorToken("Expected string literal in the form \"string\".");
     }
 
     private Token processKeywordOrIdentifier() {
@@ -325,7 +326,7 @@ public class WinZigLexer extends AbstractLexer {
                 }
                 return createMinutiae(TokenKind.END_OF_LINE_MINUTIAE);
             default:
-                throw new IllegalStateException();
+                return createErrorMinutiae("Unexpected eof found.");
         }
     }
 
@@ -348,7 +349,7 @@ public class WinZigLexer extends AbstractLexer {
                 return createMinutiae(TokenKind.MULTILINE_COMMENT_MINUTIAE);
             }
         }
-        throw new IllegalStateException();
+        return createErrorMinutiae("Expected multi-line comments in form { COMMENT }.");
     }
 
     /*
@@ -356,6 +357,18 @@ public class WinZigLexer extends AbstractLexer {
      * Token creation methods
      * -------------------------------
      */
+
+    private Token createErrorToken(String error, Object... args) {
+        Token errorToken = createToken(TokenKind.ERROR);
+        addError(errorToken, error, args);
+        return errorToken;
+    }
+
+    private Minutiae createErrorMinutiae(String error, Object... args) {
+        Minutiae errorMinutiae = createMinutiae(TokenKind.ERROR);
+        addError(errorMinutiae, error, args);
+        return errorMinutiae;
+    }
 
     private Token createToken(TokenKind kind) {
         int startOffset = charReader.getMarkStartOffset();
@@ -379,6 +392,8 @@ public class WinZigLexer extends AbstractLexer {
     }
 
     private Minutiae createMinutiae(TokenKind kind) {
-        return new Minutiae(kind, charReader.getMarkedChars());
+        int startOffset = charReader.getMarkStartOffset();
+        int endOffset = charReader.getOffset();
+        return new Minutiae(kind, charReader.getMarkedChars(), startOffset, endOffset);
     }
 }

@@ -9,6 +9,7 @@ import semantic.attrs.Instruction;
 
 import java.io.File;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 
@@ -41,6 +42,8 @@ public class WinZig implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
+        List<String> errors = new ArrayList<>();
+
         String sourceCode = Files.readString(file.toPath());
         CharReader charReader = CharReader.from(sourceCode);
         WinZigLexer lexer = new WinZigLexer(charReader);
@@ -48,8 +51,24 @@ public class WinZig implements Callable<Integer> {
         SemanticAnalyzer analyzer = new SemanticAnalyzer(charReader);
         ASTNode node = parser.parse();
         List<Instruction> instructions = analyzer.generate(node);
-        // printTree(node, 0);
-        printInstructions(instructions);
+
+        if (lexer.hasErrors()) {
+            System.err.println("Lexer failed due to errors.");
+            System.err.println("============================");
+            System.err.println(lexer.collectErrors());
+        } else if (parser.hasErrors()) {
+            System.err.println("Parser failed due to errors.");
+            System.err.println("============================");
+            System.err.println(parser.collectErrors());
+        } else if (analyzer.hasErrors()) {
+            System.err.println("Semantic analyzer failed due to errors.");
+            System.err.println("=======================================");
+            System.err.println(analyzer.collectErrors());
+        } else {
+            // printTree(node, 0);
+            printInstructions(instructions);
+        }
+
         return 0;
     }
 
@@ -67,6 +86,7 @@ public class WinZig implements Callable<Integer> {
             System.exit(exitCode);
         } catch (Exception e) {
             System.err.println(e.getMessage());
+            e.printStackTrace();
         }
     }
 }

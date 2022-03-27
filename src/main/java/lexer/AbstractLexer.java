@@ -1,13 +1,13 @@
 package lexer;
 
-import diagnostics.TextHighlighter;
+import diagnostics.DiagnosticCollector;
 import lexer.tokens.Minutiae;
 import lexer.tokens.Token;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public abstract class AbstractLexer implements TextHighlighter {
+public abstract class AbstractLexer extends DiagnosticCollector {
     protected final CharReader charReader;
     protected List<Minutiae> leadingMinutiae;
 

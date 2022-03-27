@@ -4,6 +4,7 @@ package lexer;
 import diagnostics.TextHighlighter;
 
 import java.util.Arrays;
+import java.util.StringJoiner;
 
 public class CharReader implements TextHighlighter {
     private final char[] charBuffer;
@@ -68,22 +69,32 @@ public class CharReader implements TextHighlighter {
     public String highlightedSegment(int startOffset, int endOffset) {
         int prevCrOffset, nextCrOffset;
         for (prevCrOffset = startOffset; prevCrOffset >= 0; prevCrOffset--) {
-            if (charBuffer[prevCrOffset] == '\n') break;
-
+            if (charBufferLength <= startOffset || charBuffer[prevCrOffset] == '\n') break;
         }
+
         for (nextCrOffset = endOffset; nextCrOffset < charBufferLength; nextCrOffset++) {
             if (charBuffer[nextCrOffset] == '\n') break;
         }
-        StringBuilder codeSb = new StringBuilder();
-        StringBuilder highlightSb = new StringBuilder();
+        StringJoiner textSb = new StringJoiner("\n");
+        StringBuilder codeSbLine = new StringBuilder();
+        StringBuilder highlightSbLine = new StringBuilder();
         for (int i = prevCrOffset + 1; i < nextCrOffset; i++) {
-            codeSb.append(charBuffer[i]);
+            if (charBuffer[i] == '\n') {
+                textSb.add(codeSbLine);
+                codeSbLine = new StringBuilder();
+                if (!highlightSbLine.toString().isBlank()) {
+                    textSb.add(highlightSbLine);
+                    highlightSbLine = new StringBuilder();
+                }
+                continue;
+            }
+            codeSbLine.append(charBuffer[i]);
             if (i >= startOffset && i < endOffset) {
-                highlightSb.append('^');
+                highlightSbLine.append('^');
             } else {
-                highlightSb.append(' ');
+                highlightSbLine.append(' ');
             }
         }
-        return codeSb.append('\n').append(highlightSb).toString();
+        return textSb.add(codeSbLine).add(highlightSbLine).toString();
     }
 }

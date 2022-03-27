@@ -68,7 +68,10 @@ public enum TokenKind {
     WHITESPACE_MINUTIAE,
     END_OF_LINE_MINUTIAE,
     MULTILINE_COMMENT_MINUTIAE,
-    COMMENT_MINUTIAE;
+    COMMENT_MINUTIAE,
+
+    // Error Token
+    ERROR;
 
     private final String value;
 

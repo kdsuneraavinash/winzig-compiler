@@ -21,14 +21,12 @@ import semantic.symbols.VariableSymbol;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.StringJoiner;
 
 public class SemanticAnalyzer extends BaseVisitor {
     private final TextHighlighter highlighter;
     private SymbolTable symbolTable;
 
     private Context context;
-    private List<String> error;
     private List<Instruction> code;
 
     public SemanticAnalyzer(TextHighlighter highlighter) {
@@ -40,10 +38,7 @@ public class SemanticAnalyzer extends BaseVisitor {
     }
 
     private void addError(String message, Object... args) {
-        String errorMessage = String.format(message, args);
-        String highlighted = currentNode.highlighted(highlighter);
-        if (highlighted.isEmpty()) error.add(errorMessage);
-        else error.add(String.format("%s\n%s", errorMessage, highlighted));
+        addError(currentNode, message, args);
     }
 
     private void attachLabel(Label label, int position) {
@@ -66,15 +61,8 @@ public class SemanticAnalyzer extends BaseVisitor {
     public List<Instruction> generate(ASTNode astNode) {
         this.context = new Context();
         this.symbolTable = new SymbolTable();
-        this.error = new ArrayList<>();
         this.code = new ArrayList<>();
         visit(astNode);
-        if (!error.isEmpty()) {
-            StringJoiner sj = new StringJoiner("\n");
-            this.error.forEach(sj::add);
-            sj.add("Compilation aborted due to semantic errors.");
-            throw new IllegalStateException(sj.toString());
-        }
         return code;
     }
 
@@ -1118,5 +1106,10 @@ public class SemanticAnalyzer extends BaseVisitor {
         ConstantSymbol constSymbol = lookupConstant(value);
         if (constSymbol == null) return null;
         return constSymbol.type;
+    }
+
+    @Override
+    public String highlightedSegment(int startOffset, int endOffset) {
+        return highlighter.highlightedSegment(startOffset, endOffset);
     }
 }

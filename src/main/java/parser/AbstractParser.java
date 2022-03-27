@@ -1,7 +1,7 @@
 package parser;
 
+import diagnostics.DiagnosticCollector;
 import lexer.AbstractLexer;
-import diagnostics.TextHighlighter;
 import lexer.tokens.Token;
 import lexer.tokens.TokenKind;
 import parser.nodes.ASTNode;
@@ -12,7 +12,7 @@ import parser.nodes.NodeKind;
 import java.util.Stack;
 import java.util.function.Supplier;
 
-public abstract class AbstractParser implements TextHighlighter {
+public abstract class AbstractParser extends DiagnosticCollector {
     protected final Stack<Node> nodeStack;
     protected final TokenReader tokenReader;
 
@@ -40,9 +40,10 @@ public abstract class AbstractParser implements TextHighlighter {
             return tokenReader.read();
         } else {
             Token foundToken = tokenReader.peek(0);
-            String message = String.format("Expected %s[%s] but found %s",
+            addError(foundToken, "Expected %s[%s] but found %s",
                     kind, kind.getValue(), foundToken);
-            throw new IllegalStateException(message);
+            // Return the next token anyway.
+            return foundToken;
         }
     }
 
