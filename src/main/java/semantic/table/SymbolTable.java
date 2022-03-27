@@ -20,6 +20,13 @@ public class SymbolTable {
     public static final TypeSymbol UNDEFINED_TYPE = new TypeSymbol("~UNDEFINED~", true); // Internal use only
     public static final ConstantSymbol FALSE_CONSTANT = new ConstantSymbol("false", BOOLEAN_TYPE, 0, true);
     public static final ConstantSymbol TRUE_CONSTANT = new ConstantSymbol("true", BOOLEAN_TYPE, 1, true);
+    private static final Map<String, Symbol> BUILT_IN_SYMBOLS = Map.of(
+            "integer", INTEGER_TYPE,
+            "char", CHAR_TYPE,
+            "boolean", BOOLEAN_TYPE,
+            "false", FALSE_CONSTANT,
+            "true", TRUE_CONSTANT
+    );
 
     private final Map<String, Symbol> globalSymbols;
     private final Map<String, Symbol> localSymbols;
@@ -29,19 +36,6 @@ public class SymbolTable {
         this.globalSymbols = new HashMap<>();
         this.localSymbols = new HashMap<>();
         this.isInLocalScope = false;
-        initializeSymbols(this.globalSymbols);
-        initializeSymbols(this.localSymbols);
-    }
-
-    public static void initializeSymbols(Map<String, Symbol> symbols) {
-        symbols.clear();
-        // Built-in types and constants.
-        // TODO: Restrict redefinition without adding these to local symbols.
-        symbols.put("integer", INTEGER_TYPE);
-        symbols.put("char", CHAR_TYPE);
-        symbols.put("boolean", BOOLEAN_TYPE);
-        symbols.put("false", FALSE_CONSTANT);
-        symbols.put("true", TRUE_CONSTANT);
     }
 
     /**
@@ -50,7 +44,7 @@ public class SymbolTable {
      */
     public void beginLocalScope() {
         assert !this.isInLocalScope;
-        initializeSymbols(this.localSymbols);
+        this.localSymbols.clear();
         this.isInLocalScope = true;
     }
 
@@ -60,7 +54,7 @@ public class SymbolTable {
      */
     public void endLocalScope() {
         assert this.isInLocalScope;
-        initializeSymbols(this.localSymbols);
+        this.localSymbols.clear();
         this.isInLocalScope = false;
     }
 
@@ -120,13 +114,15 @@ public class SymbolTable {
 
     /**
      * Get the symbol of the given name.
-     * This will first look in the local scope, then in the global scope.
+     * This will first look in the built-in definitions,
+     * then local scope, then in the global scope.
      * If the symbol is not found, null is returned.
      *
      * @param name the name of the symbol.
      * @return the symbol of the given name.
      */
     public Symbol lookup(String name) {
+        if (BUILT_IN_SYMBOLS.containsKey(name)) return BUILT_IN_SYMBOLS.get(name);
         if (isInLocalScope && localSymbols.containsKey(name)) return localSymbols.get(name);
         if (globalSymbols.containsKey(name)) return globalSymbols.get(name);
         return null;
@@ -134,13 +130,15 @@ public class SymbolTable {
 
     /**
      * Get whether the given symbol is already defined.
-     * If in local scope, this will check the local scope only.
+     * This will first look in the built-in definitions.
+     * If in local scope, this will check the local scope then.
      * Otherwise, the global scope will be checked.
      *
      * @param name the name of the symbol.
      * @return whether the given symbol is already defined.
      */
     public boolean alreadyDefinedInScope(String name) {
+        if (BUILT_IN_SYMBOLS.containsKey(name)) return true;
         if (isInLocalScope) return localSymbols.containsKey(name);
         return globalSymbols.containsKey(name);
     }
