@@ -38,9 +38,9 @@ public abstract class AbstractParser {
         if (tokenKind == kind) {
             return tokenReader.read();
         } else {
-            TokenKind foundKind = peekNextKind();
-            String message = String.format("Expected %s[%s] but found %s[%s]",
-                    kind, kind.getValue(), foundKind, foundKind.getValue());
+            Token foundToken = tokenReader.peek(0);
+            String message = String.format("Expected %s[%s] but found %s",
+                    kind, kind.getValue(), foundToken);
             throw new IllegalStateException(message);
         }
     }
