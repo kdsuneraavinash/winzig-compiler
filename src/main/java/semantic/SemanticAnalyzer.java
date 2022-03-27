@@ -812,8 +812,9 @@ public class SemanticAnalyzer extends BaseVisitor {
 
     @Override
     protected void visitEofExpression(ASTNode astNode) {
-        // TODO: Implement this.
-        throw new UnsupportedOperationException("eof_expression");
+        addCode(InstructionMnemonic.SOS, OperatingSystemOpType.EOF);
+        context.exprTypeSymbol = SymbolTable.BOOLEAN_TYPE;
+        context.top++;
     }
 
     @Override
