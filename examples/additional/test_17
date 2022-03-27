@@ -1,5 +1,4 @@
 program TestPrimes:
-
-{
-
+var x: inte;
+begin
 end TestPrimes.

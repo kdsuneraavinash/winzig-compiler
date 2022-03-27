@@ -103,7 +103,7 @@ public class CharReader implements TextHighlighter {
                 highlightSbLine.append('\t');
             }
         }
-        String positionText = String.format("---- Line %s, from %s", lineNumber, startOffset - prevCrOffset);
+        String positionText = String.format("---- Line %s, column %s", lineNumber, startOffset - prevCrOffset);
         return textSb.add(codeSbLine).add(highlightSbLine)
                 .add(positionText).toString();
     }
