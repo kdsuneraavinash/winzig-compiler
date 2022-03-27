@@ -503,14 +503,14 @@ public class SemanticAnalyzer extends BaseVisitor {
 
         // Create all the case clauses.
         // At the end of each clause, there will be a clause to exit the case.
-        // Assumption: After first case block, the second will be checked.
-        // So, any block that matches will be run.
-        // Otherwise-clause if no matches.
+        // Assumption: Cases break. After first case block, the second will not be checked.
+        // So, only one block will execute. (The first one that matches)
+        // Otherwise clause if non matches.
         for (int i = 0; i < nCaseClauses; i++) { // Caseclauses +
             int caseClausePosition = getNext();
-            // Next case is label of start of next case.
             context.nextCaseLabel = caseClausesLabels.get(i + 1);
             visit(astNode.getChild(i + 1)); // Caseclause
+            addCode(InstructionMnemonic.GOTO, caseClausesEndLabel);
             attachLabel(caseClausesLabels.get(i), caseClausePosition);
         }
 
@@ -625,10 +625,9 @@ public class SemanticAnalyzer extends BaseVisitor {
         // Conditionally go to the body or the next case.
         addCode(InstructionMnemonic.COND, caseBodyLabel, nextCaseLabel);
         context.top--;
-        // The code of body. At the end, go to next case label anyway.
+        // The code of body.
         int caseBodyPosition = getNext();
         visit(astNode.getChild(astNode.getSize() - 1)); // Statement
-        addCode(InstructionMnemonic.GOTO, nextCaseLabel);
         attachLabel(caseBodyLabel, caseBodyPosition);
     }
 
