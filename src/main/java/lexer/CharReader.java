@@ -94,6 +94,9 @@ public class CharReader implements TextHighlighter {
             } else {
                 highlightSbLine.append(' ');
             }
+            if (charBuffer[i] == '\t') {
+                highlightSbLine.append('\t');
+            }
         }
         return textSb.add(codeSbLine).add(highlightSbLine).toString();
     }
