@@ -67,6 +67,11 @@ public class CharReader implements TextHighlighter {
     }
 
     public String highlightedSegment(int startOffset, int endOffset) {
+        int lineNumber = 1;
+        for (int i = 0; i < charBufferLength && i < startOffset; i++) {
+            if (charBuffer[i] == '\n') lineNumber++;
+        }
+
         int prevCrOffset, nextCrOffset;
         for (prevCrOffset = startOffset; prevCrOffset >= 0; prevCrOffset--) {
             if (charBufferLength <= startOffset || charBuffer[prevCrOffset] == '\n') break;
@@ -98,6 +103,8 @@ public class CharReader implements TextHighlighter {
                 highlightSbLine.append('\t');
             }
         }
-        return textSb.add(codeSbLine).add(highlightSbLine).toString();
+        String positionText = String.format("---- Line %s, from %s", lineNumber, startOffset - prevCrOffset);
+        return textSb.add(codeSbLine).add(highlightSbLine)
+                .add(positionText).toString();
     }
 }
