@@ -435,7 +435,6 @@ public class SemanticAnalyzer extends BaseVisitor {
 
     @Override
     protected void visitForStatement(ASTNode astNode) {
-        // TODO: Implement this.
         // First statement is the initialization.
         // This is run only once.
         visit(astNode.getChild(0)); // ForStat
@@ -588,7 +587,10 @@ public class SemanticAnalyzer extends BaseVisitor {
         String identifier = ((IdentifierNode) astNode.getChild(0)).getIdentifierValue(); // Name
         visit(astNode.getChild(1)); // Expression
 
-        // TODO: Do we need to check if the variable is declared and return error if not?
+        // Assumption: Currently, if the variable is not defined,
+        // the result of the expression is discarded.
+        // But, no error will be reported.
+
         // If the variable does not exist, we ignore the assignment.
         // We have to use base lookup method to avoid writing the error.
         Symbol symbol = symbolTable.lookup(identifier);
