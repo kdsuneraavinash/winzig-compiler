@@ -432,27 +432,25 @@ public class SemanticAnalyzer extends BaseVisitor {
     @Override
     protected void visitReadStatement(ASTNode astNode) {
         for (int i = 0; i < astNode.getSize(); i++) { // list
-            // Change instruction depending on the parameter type.
-            // Here top increases by one each time.
-            // But, since the next instruction saves the value, top will decrease again.
-            // So overall, no change to the top.
-            if (context.exprTypeSymbol.isInteger()) {
-                addCode(InstructionMnemonic.SOS, OperatingSystemOpType.INPUT);
-            } else if (context.exprTypeSymbol.isChar()) {
-                addCode(InstructionMnemonic.SOS, OperatingSystemOpType.INPUTC);
-            } else {
-                addError("Invalid type for read statement.");
-                continue;
-            }
             // Generate instruction to save in local/global variable.
             String identifier = ((IdentifierNode) astNode.getChild(i)).getIdentifierValue();
             VariableSymbol variableSymbol = lookupVariable(identifier);
             if (variableSymbol == null) continue;
-            if (variableSymbol.isGlobal) {
-                addCode(InstructionMnemonic.SGV, variableSymbol.address);
+
+            // Change instruction depending on the parameter type.
+            // Here top increases by one each time.
+            // But, since the next instruction saves the value, top will decrease again.
+            // So overall, no change to the top.
+            if (variableSymbol.type.isInteger()) {
+                addCode(InstructionMnemonic.SOS, OperatingSystemOpType.INPUT);
+            } else if (variableSymbol.type.isChar()) {
+                addCode(InstructionMnemonic.SOS, OperatingSystemOpType.INPUTC);
             } else {
-                addCode(InstructionMnemonic.SLV, variableSymbol.address);
+                addError("Invalid type for read statement: " + variableSymbol.type);
+                continue;
             }
+            addCode(variableSymbol.isGlobal ? InstructionMnemonic.SGV : InstructionMnemonic.SLV,
+                    variableSymbol.address);
         }
     }
 
@@ -540,20 +538,37 @@ public class SemanticAnalyzer extends BaseVisitor {
 
         // Generate instruction to save in local/global variable.
         // This will pop the expression result.
-        if (variableSymbol.isGlobal) {
-            addCode(InstructionMnemonic.SGV, variableSymbol.address);
-        } else {
-            addCode(InstructionMnemonic.SLV, variableSymbol.address);
-        }
+        addCode(variableSymbol.isGlobal ? InstructionMnemonic.SGV : InstructionMnemonic.SLV,
+                variableSymbol.address);
         context.top--;
     }
 
     @Override
     protected void visitSwapStatement(ASTNode astNode) {
-        // TODO: Implement this.
-        visit(astNode.getChild(0)); // Name
-        visit(astNode.getChild(1)); // Name
-        throw new UnsupportedOperationException("swap");
+        String identifier1 = ((IdentifierNode) astNode.getChild(0)).getIdentifierValue();
+        String identifier2 = ((IdentifierNode) astNode.getChild(1)).getIdentifierValue();
+
+        // Get the variable symbols and check their types.
+        VariableSymbol variableSymbol1 = lookupVariable(identifier1);
+        VariableSymbol variableSymbol2 = lookupVariable(identifier2);
+        if (variableSymbol1 == null || variableSymbol2 == null) return;
+        if (!(variableSymbol1.type.isAssignable(variableSymbol2.type) &&
+                variableSymbol2.type.isAssignable(variableSymbol1.type))) {
+            addError("Incompatible types for swap statement: "
+                    + variableSymbol1.type + " and " + variableSymbol2.type + ".");
+            return;
+        }
+
+        // Load var1 and var2. Then save var1 in var2 and var2 in var1.
+        // Top will not change.
+        addCode(variableSymbol1.isGlobal ? InstructionMnemonic.LGV : InstructionMnemonic.LLV,
+                variableSymbol1.address);
+        addCode(variableSymbol2.isGlobal ? InstructionMnemonic.LGV : InstructionMnemonic.LLV,
+                variableSymbol2.address);
+        addCode(variableSymbol1.isGlobal ? InstructionMnemonic.SGV : InstructionMnemonic.SLV,
+                variableSymbol1.address);
+        addCode(variableSymbol2.isGlobal ? InstructionMnemonic.SGV : InstructionMnemonic.SLV,
+                variableSymbol2.address);
     }
 
     @Override
@@ -805,11 +820,8 @@ public class SemanticAnalyzer extends BaseVisitor {
         Symbol symbol = symbolTable.lookup(identifierNode.getIdentifierValue());
         if (symbol instanceof VariableSymbol) {
             VariableSymbol variableSymbol = (VariableSymbol) symbol;
-            if (variableSymbol.isGlobal) {
-                addCode(InstructionMnemonic.LGV, variableSymbol.address);
-            } else {
-                addCode(InstructionMnemonic.LLV, variableSymbol.address);
-            }
+            addCode(variableSymbol.isGlobal ? InstructionMnemonic.LGV : InstructionMnemonic.LLV,
+                    variableSymbol.address);
             context.exprTypeSymbol = variableSymbol.type;
             context.top++;
             return;
