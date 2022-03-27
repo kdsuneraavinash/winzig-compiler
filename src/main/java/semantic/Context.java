@@ -4,7 +4,6 @@ import semantic.attrs.Label;
 import semantic.symbols.FcnSymbol;
 import semantic.symbols.TypeSymbol;
 import semantic.symbols.VariableSymbol;
-import semantic.table.SymbolTable;
 
 import java.util.ArrayList;
 import java.util.List;

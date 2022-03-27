@@ -1,4 +1,4 @@
-package semantic.table;
+package semantic;
 
 import semantic.attrs.Label;
 import semantic.symbols.ConstantSymbol;

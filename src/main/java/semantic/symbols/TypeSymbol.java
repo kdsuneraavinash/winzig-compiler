@@ -1,7 +1,7 @@
 package semantic.symbols;
 
 import semantic.attrs.SymbolType;
-import semantic.table.SymbolTable;
+import semantic.SymbolTable;
 
 public class TypeSymbol extends Symbol {
 
