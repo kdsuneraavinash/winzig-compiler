@@ -2,7 +2,7 @@ program mod2prog:
 var n: integer;
 
 begin
-   while 1 do
+   while 1=1 do
    begin
       output(n);
       n := succ(n)

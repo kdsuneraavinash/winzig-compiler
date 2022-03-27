@@ -352,7 +352,7 @@ public class SemanticAnalyzer extends BaseVisitor {
     @Override
     protected void visitIfStatement(ASTNode astNode) {
         visit(astNode.getChild(0)); // Expression
-        if (!context.exprTypeSymbol.isBoolean()) addError("Invalid type for if statement.");
+        if (!context.exprTypeSymbol.isBoolean()) addError("Invalid type for if condition.");
 
         Label thenEntryLabel = new Label();
         Label elseEntryLabel = astNode.getSize() == 3 ? new Label() : null;
@@ -387,10 +387,12 @@ public class SemanticAnalyzer extends BaseVisitor {
         Label whileBodyLabel = new Label();
         Label whileExitLabel = new Label();
 
-        // Depending on the condition value, go to either the body or the end of while.
-        // Top will decrease by one because we pop the condition value.
         int whileConditionPosition = getNext();
         visit(astNode.getChild(0)); // Expression
+        if (!context.exprTypeSymbol.isBoolean()) addError("Invalid type for while condition.");
+
+        // Depending on the condition value, go to either the body or the end of while.
+        // Top will decrease by one because we pop the condition value.
         addCode(InstructionMnemonic.COND, whileBodyLabel, whileExitLabel);
         context.top--;
         attachLabel(whileConditionLabel, whileConditionPosition);
@@ -418,10 +420,11 @@ public class SemanticAnalyzer extends BaseVisitor {
         }
         attachLabel(repeatBodyLabel, repeatBodyPosition);
 
+        visit(astNode.getChild(astNode.getSize() - 1)); // Expression
+        if (!context.exprTypeSymbol.isBoolean()) addError("Invalid type for repeat condition.");
+
         // Depending on the condition value, go to either the body or the end of while.
         // Top will decrease by one because we pop the condition value.
-        int repeatConditionPosition = getNext();
-        visit(astNode.getChild(astNode.getSize() - 1)); // Expression
         addCode(InstructionMnemonic.COND, repeatExitLabel, repeatBodyLabel);
         context.top--;
 
@@ -433,7 +436,20 @@ public class SemanticAnalyzer extends BaseVisitor {
     @Override
     protected void visitForStatement(ASTNode astNode) {
         // TODO: Implement this.
+        // First statement is the initialization.
+        // This is run only once.
         visit(astNode.getChild(0)); // ForStat
+
+        Label forConditionLabel = new Label();
+        Label forBodyLabel = new Label();
+        Label forExitLabel = new Label();
+
+        // Second statement is the condition.
+        int forConditionPosition = getNext();
+        visit(astNode.getChild(1)); // ForExp
+
+
+
         visit(astNode.getChild(1)); // ForExp
         visit(astNode.getChild(2)); // ForStat
         visit(astNode.getChild(3)); // Statement
