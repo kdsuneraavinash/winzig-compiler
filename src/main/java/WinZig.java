@@ -45,7 +45,7 @@ public class WinZig implements Callable<Integer> {
         CharReader charReader = CharReader.from(sourceCode);
         WinZigLexer lexer = new WinZigLexer(charReader);
         WinZigParser parser = new WinZigParser(lexer);
-        SemanticAnalyzer analyzer = new SemanticAnalyzer();
+        SemanticAnalyzer analyzer = new SemanticAnalyzer(charReader);
         ASTNode node = parser.parse();
         List<Instruction> instructions = analyzer.generate(node);
         // printTree(node, 0);

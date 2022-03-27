@@ -5,8 +5,14 @@ import parser.nodes.IdentifierNode;
 import parser.nodes.Node;
 
 public abstract class BaseVisitor {
+    protected Node currentNode;
+
+    protected BaseVisitor() {
+        this.currentNode = null;
+    }
+
     public void visit(Node node) {
-        // System.err.println(node);
+        this.currentNode = node;
         if (node instanceof IdentifierNode) {
             visitIdentifier((IdentifierNode) node);
             return;

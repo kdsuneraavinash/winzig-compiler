@@ -1,5 +1,6 @@
 package semantic;
 
+import diagnostics.TextHighlighter;
 import lexer.tokens.TokenKind;
 import parser.nodes.ASTNode;
 import parser.nodes.IdentifierNode;
@@ -23,18 +24,26 @@ import java.util.Objects;
 import java.util.StringJoiner;
 
 public class SemanticAnalyzer extends BaseVisitor {
+    private final TextHighlighter highlighter;
     private SymbolTable symbolTable;
 
     private Context context;
     private List<String> error;
     private List<Instruction> code;
 
+    public SemanticAnalyzer(TextHighlighter highlighter) {
+        this.highlighter = highlighter;
+    }
+
     private void addCode(InstructionMnemonic mnemonic, Object... register) {
         code.add(new Instruction(mnemonic, register));
     }
 
     private void addError(String message, Object... args) {
-        error.add(String.format(message, args));
+        String errorMessage = String.format(message, args);
+        String highlighted = currentNode.highlighted(highlighter);
+        if (highlighted.isEmpty()) error.add(errorMessage);
+        else error.add(String.format("%s\n%s", errorMessage, highlighted));
     }
 
     private void attachLabel(Label label, int position) {
