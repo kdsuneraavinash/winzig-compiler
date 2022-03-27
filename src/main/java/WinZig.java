@@ -5,9 +5,11 @@ import parser.nodes.ASTNode;
 import parser.nodes.IdentifierNode;
 import parser.nodes.Node;
 import semantic.SemanticAnalyzer;
+import semantic.attrs.Instruction;
 
 import java.io.File;
 import java.nio.file.Files;
+import java.util.List;
 import java.util.concurrent.Callable;
 
 public class WinZig implements Callable<Integer> {
@@ -30,6 +32,12 @@ public class WinZig implements Callable<Integer> {
         }
     }
 
+    public static void printInstructions(List<Instruction> instructions) {
+        for (Instruction instruction : instructions) {
+            System.out.println(instruction);
+        }
+    }
+
 
     @Override
     public Integer call() throws Exception {
@@ -39,8 +47,9 @@ public class WinZig implements Callable<Integer> {
         WinZigParser parser = new WinZigParser(lexer);
         SemanticAnalyzer analyzer = new SemanticAnalyzer();
         ASTNode node = parser.parse();
-//        printTree(node, 0);
-        analyzer.analyze(node);
+        List<Instruction> instructions = analyzer.generate(node);
+        // printTree(node, 0);
+        printInstructions(instructions);
         return 0;
     }
 
@@ -57,9 +66,7 @@ public class WinZig implements Callable<Integer> {
             int exitCode = compiler.call();
             System.exit(exitCode);
         } catch (Exception e) {
-            System.err.println("Something went wrong...");
             System.err.println(e.getMessage());
-            e.printStackTrace();
         }
     }
 }

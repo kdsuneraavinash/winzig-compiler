@@ -20,6 +20,7 @@ import semantic.table.SymbolTable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.StringJoiner;
 
 public class SemanticAnalyzer extends BaseVisitor {
     private SymbolTable symbolTable;
@@ -53,22 +54,19 @@ public class SemanticAnalyzer extends BaseVisitor {
 
     // ---------------------------------------- Program ----------------------------------------------------------------
 
-    public void analyze(ASTNode astNode) {
+    public List<Instruction> generate(ASTNode astNode) {
         this.context = new Context();
         this.symbolTable = new SymbolTable();
         this.error = new ArrayList<>();
         this.code = new ArrayList<>();
         visit(astNode);
-        System.out.println("----------------------------------------------------");
-        for (String line : this.error) {
-            System.out.println(line);
+        if (!error.isEmpty()) {
+            StringJoiner sj = new StringJoiner("\n");
+            this.error.forEach(sj::add);
+            sj.add("Compilation aborted due to semantic errors.");
+            throw new IllegalStateException(sj.toString());
         }
-        System.out.println("----------------------------------------------------");
-        for (Instruction line : this.code) {
-            System.out.println(line);
-        }
-        System.out.println("----------------------------------------------------");
-        System.out.println(this.symbolTable);
+        return code;
     }
 
     // ---------------------------------------- Program ----------------------------------------------------------------
