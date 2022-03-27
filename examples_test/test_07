@@ -1,0 +1,11 @@
+program mod2prog:
+var n: integer;
+
+begin
+   read(n);
+   while n > 0 do
+   begin
+      output(n mod 2);
+      n := n / 2
+   end
+end mod2prog.

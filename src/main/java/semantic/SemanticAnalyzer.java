@@ -383,10 +383,27 @@ public class SemanticAnalyzer extends BaseVisitor {
 
     @Override
     protected void visitWhileStatement(ASTNode astNode) {
-        // TODO: Implement this.
+        Label whileConditionLabel = new Label();
+        Label whileBodyLabel = new Label();
+        Label whileExitLabel = new Label();
+
+        // Depending on the condition value, go to either the body or the end of while.
+        // Top will decrease by one because we pop the condition value.
+        int whileConditionPosition = getNext();
         visit(astNode.getChild(0)); // Expression
+        addCode(InstructionMnemonic.COND, whileBodyLabel, whileExitLabel);
+        context.top--;
+        attachLabel(whileConditionLabel, whileConditionPosition);
+
+        // Execute the body and go back to the condition.
+        int whileBodyPosition = getNext();
         visit(astNode.getChild(1)); // Statement
-        throw new UnsupportedOperationException("while");
+        attachLabel(whileBodyLabel, whileBodyPosition);
+        addCode(InstructionMnemonic.GOTO, whileConditionLabel);
+
+        // With current implementation, the while statement is always followed by a NOP.
+        // The while exit label is attached to the NOP.
+        attachLabel(whileExitLabel, getNext());
     }
 
     @Override
