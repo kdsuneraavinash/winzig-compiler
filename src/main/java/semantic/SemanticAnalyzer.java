@@ -120,24 +120,12 @@ public class SemanticAnalyzer extends BaseVisitor {
         // Supports char/int literals only. Each is stored as integer regardless of type.
         // Constant can point to another constant, but it should be defined before this.
         // Basically, the value should be determinable at compile time.
-        int constantValue;
-        TypeSymbol constantType;
-        if (tokenKind == TokenKind.CHAR_LITERAL) {
-            constantValue = value.codePointAt(1);
-            constantType = SymbolTable.CHAR_TYPE;
-        } else if (tokenKind == TokenKind.INTEGER_LITERAL) {
-            constantValue = Integer.parseInt(value);
-            constantType = SymbolTable.INTEGER_TYPE;
-        } else {
-            // Constant is defined using another constant.
-            ConstantSymbol constSymbol = lookupConstant(value);
-            if (constSymbol == null) return;
-            constantValue = constSymbol.value;
-            constantType = constSymbol.type;
-        }
+        int constantValue = getConstantValue(valueNode);
+        TypeSymbol constantTypeSymbol = getConstantType(valueNode);
+        if (constantTypeSymbol == null) return;
 
         // Constants are not stored in the memory. The value is directly used.
-        symbolTable.enterConstantSymbol(identifier, constantType, constantValue);
+        symbolTable.enterConstantSymbol(identifier, constantTypeSymbol, constantValue);
     }
 
     // ---------------------------------------- Types ------------------------------------------------------------------
@@ -489,11 +477,30 @@ public class SemanticAnalyzer extends BaseVisitor {
 
     @Override
     protected void visitCaseStatement(ASTNode astNode) {
-        // TODO: Implement this.
         visit(astNode.getChild(0)); // Expression
-        for (int i = 1; i < astNode.getSize() - 1; i++) { // Caseclauses +
-            visit(astNode.getChild(i)); // Caseclause
+        TypeSymbol exprType = context.exprTypeSymbol;
+
+        // Case clauses except expression and otherwise.
+        int nCaseClauses = astNode.getSize() - 2;
+        List<Label> caseLabels = new ArrayList<>();
+        for (int i = 0; i < nCaseClauses; i++) {
+            caseLabels.add(new Label());
         }
+
+
+        for (int i = 1; i < astNode.getSize() - 1; i++) { // Caseclauses +
+            Label caseLabel = new Label();
+            int casePosition = getNext();
+
+            visit(astNode.getChild(i)); // Caseclause
+            if (typeMismatch(exprType, context.exprTypeSymbol)) return;
+
+            // Store the label position for each case clause.
+            attachLabel(caseLabel, casePosition);
+            caseLabels.add(caseLabel);
+        }
+
+
         visit(astNode.getChild(astNode.getSize() - 1)); // OtherwiseClause
         throw new UnsupportedOperationException("case");
     }
@@ -536,11 +543,7 @@ public class SemanticAnalyzer extends BaseVisitor {
             addError("Return statement outside of function.");
             return;
         }
-        if (!activeFcnSymbol.returnTypeSymbol.isAssignable(context.exprTypeSymbol)) {
-            addError("Return type mismatch. Expected " +
-                    activeFcnSymbol.returnTypeSymbol + ", got " + context.exprTypeSymbol + ".");
-            return;
-        }
+        if (typeMismatch(activeFcnSymbol.returnTypeSymbol, context.exprTypeSymbol)) return;
 
         addCode(InstructionMnemonic.RTN, 1);
         context.top--;
@@ -566,9 +569,30 @@ public class SemanticAnalyzer extends BaseVisitor {
 
     @Override
     protected void visitCaseClause(ASTNode astNode) {
-        // TODO: Implement this.
+
+        // The top of variable stack should be the expression to check.
+        // Always add the const to check, then compare, if equal, jump to case body.
+        // If not equal, push the expression again and check if there are more expressions.
+        // If there are more expressions, jump do the same. Otherwise, simply exit.
+        // At the end of case clause, stack top should be the same and expression should be on top.
+
         for (int i = 0; i < astNode.getSize() - 1; i++) { // list
-            visit(astNode.getChild(i)); // CaseExpression
+            Node caseExprBaseNode = astNode.getChild(i); // CaseExpression
+            if (caseExprBaseNode instanceof IdentifierNode) {
+                // Simple case value.
+                IdentifierNode caseExprNode = (IdentifierNode) caseExprBaseNode;
+                int caseExprValue = getConstantValue(caseExprNode);
+                TypeSymbol caseExprType = getConstantType(caseExprNode);
+                if (caseExprType == null) continue;
+
+
+            } else {
+                // TODO: Support double dots.
+                visit(caseExprBaseNode);
+            }
+
+
+//            addCode(InstructionMnemonic.LIT, OperatingSystemOpType.CONST);
         }
         visit(astNode.getChild(astNode.getSize() - 1)); // Statement
         throw new UnsupportedOperationException("case_clause");
@@ -615,11 +639,7 @@ public class SemanticAnalyzer extends BaseVisitor {
         // Get the variable symbol and check its type.
         // The expression result should be assignable to the variable.
         VariableSymbol variableSymbol = (VariableSymbol) symbol;
-        if (!variableSymbol.type.isAssignable(context.exprTypeSymbol)) {
-            addError("Invalid type for assignment statement: expected " + variableSymbol.type +
-                    ", got " + context.exprTypeSymbol);
-            return;
-        }
+        if (typeMismatch(variableSymbol.type, context.exprTypeSymbol)) return;
 
         // Generate instruction to save in local/global variable.
         // This will pop the expression result.
@@ -637,12 +657,7 @@ public class SemanticAnalyzer extends BaseVisitor {
         VariableSymbol variableSymbol1 = lookupVariable(identifier1);
         VariableSymbol variableSymbol2 = lookupVariable(identifier2);
         if (variableSymbol1 == null || variableSymbol2 == null) return;
-        if (!(variableSymbol1.type.isAssignable(variableSymbol2.type) &&
-                variableSymbol2.type.isAssignable(variableSymbol1.type))) {
-            addError("Incompatible types for swap statement: "
-                    + variableSymbol1.type + " and " + variableSymbol2.type + ".");
-            return;
-        }
+        if (typeMismatch(variableSymbol1.type, variableSymbol2.type)) return;
 
         // Load var1 and var2. Then save var1 in var2 and var2 in var1.
         // Top will not change.
@@ -968,12 +983,15 @@ public class SemanticAnalyzer extends BaseVisitor {
             return false;
         }
         for (int i = 0; i < fcnSymbol.paramTypeSymbols.size(); i++) {
-            if (!fcnSymbol.paramTypeSymbols.get(i).isAssignable(paramTypes.get(i))) {
-                addError("Invalid argument type for function '%s'. Expected '%s', found '%s'.",
-                        fcnSymbol.name, fcnSymbol.paramTypeSymbols.get(i).name, paramTypes.get(i).name);
-                return false;
-            }
+            if (typeMismatch(fcnSymbol.paramTypeSymbols.get(i), paramTypes.get(i))) return false;
         }
+        return true;
+    }
+
+    private boolean typeMismatch(TypeSymbol firstType, TypeSymbol secondType) {
+        if (firstType.isAssignable(secondType)) return false;
+        addError("Type mismatch. Types are not compatible. Expected " +
+                firstType + ", got " + secondType + ".");
         return true;
     }
 
@@ -1005,5 +1023,35 @@ public class SemanticAnalyzer extends BaseVisitor {
         if (symbol instanceof FcnSymbol) return (FcnSymbol) symbol;
         addError("Function '%s' is not defined.", name);
         return null;
+    }
+
+    // -----------------------------------------------------------------------------------------------------------------
+
+    public int getConstantValue(IdentifierNode constantValueNode) {
+        String value = constantValueNode.getIdentifierValue();
+        TokenKind tokenKind = constantValueNode.getKind();
+
+        // Constant has simple literal values.
+        if (tokenKind == TokenKind.CHAR_LITERAL) return value.codePointAt(1);
+        if (tokenKind == TokenKind.INTEGER_LITERAL) return Integer.parseInt(value);
+
+        // Constant is defined using another constant.
+        ConstantSymbol constSymbol = lookupConstant(value);
+        if (constSymbol == null) return 0;
+        return constSymbol.value;
+    }
+
+    public TypeSymbol getConstantType(IdentifierNode constantValueNode) {
+        String value = constantValueNode.getIdentifierValue();
+        TokenKind tokenKind = constantValueNode.getKind();
+
+        // Constant has simple literal values.
+        if (tokenKind == TokenKind.CHAR_LITERAL) return SymbolTable.CHAR_TYPE;
+        if (tokenKind == TokenKind.INTEGER_LITERAL) return SymbolTable.INTEGER_TYPE;
+
+        // Constant is defined using another constant.
+        ConstantSymbol constSymbol = lookupConstant(value);
+        if (constSymbol == null) return null;
+        return constSymbol.type;
     }
 }
