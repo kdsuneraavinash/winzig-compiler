@@ -919,6 +919,7 @@ public class SemanticAnalyzer extends BaseVisitor {
         context.top = top;
         addCode(InstructionMnemonic.CODE, fcnSymbol.label);
         addCode(InstructionMnemonic.CALL, context.top);
+        context.exprTypeSymbol = fcnSymbol.returnTypeSymbol;
     }
 
     @Override
