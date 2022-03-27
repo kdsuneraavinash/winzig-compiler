@@ -560,8 +560,10 @@ public class SemanticAnalyzer extends BaseVisitor {
 
     @Override
     protected void visitTrue(ASTNode astNode) {
-        // TODO: Implement this.
-        throw new UnsupportedOperationException("true");
+        // Simply add truthy value to stack.
+        addCode(InstructionMnemonic.LIT, 1);
+        context.exprTypeSymbol = SymbolTable.BOOLEAN_TYPE;
+        context.top++;
     }
 
     // -----------------------------------------------------------------------------------------------------------------
