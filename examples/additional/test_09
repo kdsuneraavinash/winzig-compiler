@@ -5,7 +5,7 @@ begin
    loop
    begin
       read(n);
-      m := 0 + n;
+      m := 0;
       output(m)
    end
    pool

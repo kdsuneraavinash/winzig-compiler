@@ -52,7 +52,7 @@ public class SemanticAnalyzer extends BaseVisitor {
     @Override
     protected void visitProgram(ASTNode astNode) {
         String programName = ((IdentifierNode) astNode.getChild(0)).getIdentifierValue(); // Name
-        if (doesEndTokenMismatch(programName, astNode.getChild(6))) return;
+        if (doesEndTokenMismatch(programName, (IdentifierNode) astNode.getChild(6))) return;
 
         visit(astNode.getChild(1)); // Consts
         visit(astNode.getChild(2)); // Types
@@ -163,7 +163,7 @@ public class SemanticAnalyzer extends BaseVisitor {
     protected void visitFcn(ASTNode astNode) {
         String functionName = ((IdentifierNode) astNode.getChild(0)).getIdentifierValue(); // Name
         String returnTypeName = ((IdentifierNode) astNode.getChild(2)).getIdentifierValue(); // Name
-        if (doesEndTokenMismatch(functionName, astNode.getChild(7))) return;
+        if (doesEndTokenMismatch(functionName, (IdentifierNode) astNode.getChild(7))) return;
 
         Label functionEntryLabel = new Label();
         attachLabel(functionEntryLabel);
@@ -691,14 +691,18 @@ public class SemanticAnalyzer extends BaseVisitor {
         context.top++;
     }
 
+    // ---------------------------------------------- Expressions ------------------------------------------------------
+
     // -----------------------------------------------------------------------------------------------------------------
 
     @Override
     protected void visitLtEqualExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Term
+        TypeSymbol firstType = context.exprTypeSymbol;
         visit(astNode.getChild(1)); // Term
+        TypeSymbol secondType = context.exprTypeSymbol;
         addCode(InstructionMnemonic.BOP, BinaryOpType.BLE);
-        context.exprTypeSymbol = SymbolTable.BOOLEAN_TYPE;
+        context.exprTypeSymbol = createConditionOperator(firstType, secondType);
         // Two results are popped from the stack and one result is pushed.
         // So the top index is decreased by one for binary operators.
         context.top--;
@@ -707,69 +711,118 @@ public class SemanticAnalyzer extends BaseVisitor {
     @Override
     protected void visitLtExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Term
+        TypeSymbol firstType = context.exprTypeSymbol;
         visit(astNode.getChild(1)); // Term
+        TypeSymbol secondType = context.exprTypeSymbol;
         addCode(InstructionMnemonic.BOP, BinaryOpType.BLT);
-        context.exprTypeSymbol = SymbolTable.BOOLEAN_TYPE;
+        context.exprTypeSymbol = createConditionOperator(firstType, secondType);
         context.top--;
     }
 
     @Override
     protected void visitGtEqualExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Term
+        TypeSymbol firstType = context.exprTypeSymbol;
         visit(astNode.getChild(1)); // Term
+        TypeSymbol secondType = context.exprTypeSymbol;
         addCode(InstructionMnemonic.BOP, BinaryOpType.BGE);
-        context.exprTypeSymbol = SymbolTable.BOOLEAN_TYPE;
+        context.exprTypeSymbol = createConditionOperator(firstType, secondType);
         context.top--;
     }
 
     @Override
     protected void visitGtExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Term
+        TypeSymbol firstType = context.exprTypeSymbol;
         visit(astNode.getChild(1)); // Term
+        TypeSymbol secondType = context.exprTypeSymbol;
         addCode(InstructionMnemonic.BOP, BinaryOpType.BGT);
-        context.exprTypeSymbol = SymbolTable.BOOLEAN_TYPE;
+        context.exprTypeSymbol = createConditionOperator(firstType, secondType);
         context.top--;
     }
+
+    // -----------------------------------------------------------------------------------------------------------------
 
     @Override
     protected void visitEqualsExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Term
+        TypeSymbol firstType = context.exprTypeSymbol;
         visit(astNode.getChild(1)); // Term
+        TypeSymbol secondType = context.exprTypeSymbol;
         addCode(InstructionMnemonic.BOP, BinaryOpType.BEQ);
-        context.exprTypeSymbol = SymbolTable.BOOLEAN_TYPE;
+        context.exprTypeSymbol = createEqualityOperator(firstType, secondType);
         context.top--;
     }
 
     @Override
     protected void visitNotEqualsExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Term
+        TypeSymbol firstType = context.exprTypeSymbol;
         visit(astNode.getChild(1)); // Term
+        TypeSymbol secondType = context.exprTypeSymbol;
         addCode(InstructionMnemonic.BOP, BinaryOpType.BNE);
-        context.exprTypeSymbol = SymbolTable.BOOLEAN_TYPE;
+        context.exprTypeSymbol = createEqualityOperator(firstType, secondType);
         context.top--;
     }
+
+    // -----------------------------------------------------------------------------------------------------------------
 
     @Override
     protected void visitAddExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Term
-        TypeSymbol leftTypeSymbol = context.exprTypeSymbol;
+        TypeSymbol firstType = context.exprTypeSymbol;
         visit(astNode.getChild(1)); // Term
+        TypeSymbol secondType = context.exprTypeSymbol;
         addCode(InstructionMnemonic.BOP, BinaryOpType.BPLUS);
-        // Expression type is the type of the left operand
-        context.exprTypeSymbol = leftTypeSymbol;
+        context.exprTypeSymbol = createArithmeticOperator(firstType, secondType);
         context.top--;
     }
 
     @Override
     protected void visitSubtractExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Term
-        TypeSymbol leftTypeSymbol = context.exprTypeSymbol;
+        TypeSymbol firstType = context.exprTypeSymbol;
         visit(astNode.getChild(1)); // Term
+        TypeSymbol secondType = context.exprTypeSymbol;
         addCode(InstructionMnemonic.BOP, BinaryOpType.BMINUS);
-        // Expression type is the type of the left operand
-        context.exprTypeSymbol = leftTypeSymbol;
+        context.exprTypeSymbol = createArithmeticOperator(firstType, secondType);
         context.top--;
     }
+
+    @Override
+    protected void visitMultiplyExpression(ASTNode astNode) {
+        visit(astNode.getChild(0)); // Term
+        TypeSymbol firstType = context.exprTypeSymbol;
+        visit(astNode.getChild(1)); // Term
+        TypeSymbol secondType = context.exprTypeSymbol;
+        addCode(InstructionMnemonic.BOP, BinaryOpType.BMULT);
+        context.exprTypeSymbol = createArithmeticOperator(firstType, secondType);
+        context.top--;
+    }
+
+    @Override
+    protected void visitDivideExpression(ASTNode astNode) {
+        visit(astNode.getChild(0)); // Term
+        TypeSymbol firstType = context.exprTypeSymbol;
+        visit(astNode.getChild(1)); // Term
+        TypeSymbol secondType = context.exprTypeSymbol;
+        addCode(InstructionMnemonic.BOP, BinaryOpType.BDIV);
+        context.exprTypeSymbol = createArithmeticOperator(firstType, secondType);
+        context.top--;
+    }
+
+    @Override
+    protected void visitModExpression(ASTNode astNode) {
+        visit(astNode.getChild(0)); // Term
+        TypeSymbol firstType = context.exprTypeSymbol;
+        visit(astNode.getChild(1)); // Term
+        TypeSymbol secondType = context.exprTypeSymbol;
+        addCode(InstructionMnemonic.BOP, BinaryOpType.BMOD);
+        context.exprTypeSymbol = createArithmeticOperator(firstType, secondType);
+        context.top--;
+    }
+
+    // -----------------------------------------------------------------------------------------------------------------
 
     @Override
     protected void visitOrExpression(ASTNode astNode) {
@@ -777,28 +830,8 @@ public class SemanticAnalyzer extends BaseVisitor {
         TypeSymbol firstType = context.exprTypeSymbol;
         visit(astNode.getChild(1)); // Term
         TypeSymbol secondType = context.exprTypeSymbol;
-        if (isLogicalOperatorDefined(firstType, secondType)) {
-            addCode(InstructionMnemonic.BOP, BinaryOpType.BOR);
-        }
-        context.exprTypeSymbol = SymbolTable.BOOLEAN_TYPE;
-        context.top--;
-    }
-
-    @Override
-    protected void visitMultiplyExpression(ASTNode astNode) {
-        visit(astNode.getChild(0)); // Term
-        visit(astNode.getChild(1)); // Term
-        addCode(InstructionMnemonic.BOP, BinaryOpType.BMULT);
-        context.exprTypeSymbol = SymbolTable.INTEGER_TYPE;
-        context.top--;
-    }
-
-    @Override
-    protected void visitDivideExpression(ASTNode astNode) {
-        visit(astNode.getChild(0)); // Term
-        visit(astNode.getChild(1)); // Term
-        addCode(InstructionMnemonic.BOP, BinaryOpType.BDIV);
-        context.exprTypeSymbol = SymbolTable.INTEGER_TYPE;
+        addCode(InstructionMnemonic.BOP, BinaryOpType.BOR);
+        context.exprTypeSymbol = isLogicalOperatorDefined(firstType, secondType);
         context.top--;
     }
 
@@ -808,29 +841,18 @@ public class SemanticAnalyzer extends BaseVisitor {
         TypeSymbol firstType = context.exprTypeSymbol;
         visit(astNode.getChild(1)); // Term
         TypeSymbol secondType = context.exprTypeSymbol;
-        if (isLogicalOperatorDefined(firstType, secondType)) {
-            addCode(InstructionMnemonic.BOP, BinaryOpType.BAND);
-        }
-        context.exprTypeSymbol = SymbolTable.BOOLEAN_TYPE;
+        addCode(InstructionMnemonic.BOP, BinaryOpType.BAND);
+        context.exprTypeSymbol = isLogicalOperatorDefined(firstType, secondType);
         context.top--;
     }
 
-    @Override
-    protected void visitModExpression(ASTNode astNode) {
-        visit(astNode.getChild(0)); // Term
-        visit(astNode.getChild(1)); // Term
-        addCode(InstructionMnemonic.BOP, BinaryOpType.BMOD);
-        context.exprTypeSymbol = SymbolTable.INTEGER_TYPE;
-        context.top--;
-    }
+    // -----------------------------------------------------------------------------------------------------------------
 
     @Override
     protected void visitNegativeExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Primary
-        if (isNumericOperatorDefined(context.exprTypeSymbol)) {
-            addCode(InstructionMnemonic.UOP, UnaryOpType.UNEG);
-        }
-        context.exprTypeSymbol = SymbolTable.INTEGER_TYPE;
+        addCode(InstructionMnemonic.UOP, UnaryOpType.UNEG);
+        context.exprTypeSymbol = createNegativeOperator(context.exprTypeSymbol);
         // One result is popped from the stack and one result is pushed.
         // So the top index does not change for unary operators.
     }
@@ -838,11 +860,11 @@ public class SemanticAnalyzer extends BaseVisitor {
     @Override
     protected void visitNotExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Primary
-        if (isBooleanOperatorDefined(context.exprTypeSymbol)) {
-            addCode(InstructionMnemonic.UOP, UnaryOpType.UNOT);
-        }
-        context.exprTypeSymbol = SymbolTable.BOOLEAN_TYPE;
+        addCode(InstructionMnemonic.UOP, UnaryOpType.UNOT);
+        context.exprTypeSymbol = createNotOperator(context.exprTypeSymbol);
     }
+
+    // -----------------------------------------------------------------------------------------------------------------
 
     @Override
     protected void visitEofExpression(ASTNode astNode) {
@@ -881,27 +903,28 @@ public class SemanticAnalyzer extends BaseVisitor {
         context.exprTypeSymbol = fcnSymbol.returnTypeSymbol;
     }
 
+    // -----------------------------------------------------------------------------------------------------------------
+
     @Override
     protected void visitSuccExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Primary
-        if (isSuccPredOperatorDefined(context.exprTypeSymbol)) {
-            addCode(InstructionMnemonic.UOP, UnaryOpType.USUCC);
-        }
+        addCode(InstructionMnemonic.UOP, UnaryOpType.USUCC);
+        createSuccPredOperator(context.exprTypeSymbol);
         // Expression type does not change.
     }
 
     @Override
     protected void visitPredExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Primary
-        if (isSuccPredOperatorDefined(context.exprTypeSymbol)) {
-            addCode(InstructionMnemonic.UOP, UnaryOpType.UPRED);
-        }
+        addCode(InstructionMnemonic.UOP, UnaryOpType.UPRED);
+        createSuccPredOperator(context.exprTypeSymbol);
         // Expression type does not change.
     }
 
     @Override
     protected void visitChrExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Expression
+        createChrOperator(context.exprTypeSymbol);
         // Simply change the expression type to char.
         context.exprTypeSymbol = SymbolTable.CHAR_TYPE;
     }
@@ -909,9 +932,12 @@ public class SemanticAnalyzer extends BaseVisitor {
     @Override
     protected void visitOrdExpression(ASTNode astNode) {
         visit(astNode.getChild(0)); // Expression
+        createOrdOperator(context.exprTypeSymbol);
         // Simply change the expression type to integer.
         context.exprTypeSymbol = SymbolTable.INTEGER_TYPE;
     }
+
+    // -----------------------------------------------------------------------------------------------------------------
 
     @Override
     public void visitIdentifier(IdentifierNode identifierNode) {
@@ -953,40 +979,106 @@ public class SemanticAnalyzer extends BaseVisitor {
 
     // -----------------------------------------------------------------------------------------------------------------
 
-    private boolean doesEndTokenMismatch(String name, Node endNode) {
-        if (!name.equals(((IdentifierNode) endNode).getIdentifierValue())) {
-            addError("Begin and end clauses have mismatching names.", name);
+    private boolean doesEndTokenMismatch(String name, IdentifierNode endNode) {
+        String errorMessage = "Expected '%s' for the end token, but found '%s'.";
+        String endName = endNode.getIdentifierValue();
+        if (!name.equals(endName)) {
+            addError(errorMessage, name, endName);
             return true;
         }
         return false;
     }
 
-    private boolean isLogicalOperatorDefined(TypeSymbol firstType, TypeSymbol secondType) {
-        boolean isDefined = firstType.isBoolean() && secondType.isBoolean();
-        if (!isDefined)
-            addError("Invalid types for logical operator. " + "Requires 'boolean'. Found '%s' and '%s'.",
-                    firstType.name, secondType.name);
-        return isDefined;
+    private TypeSymbol createConditionOperator(TypeSymbol firstType, TypeSymbol secondType) {
+        String errorMessage = "Comparison operator is not defined for %s and %s.";
+        if (firstType.isBoolean() || secondType.isBoolean()) {
+            // Boolean is not supported.
+            addError(errorMessage, firstType, secondType);
+        } else if (!firstType.equals(secondType)) {
+            // Different types are not supported.
+            addError(errorMessage, firstType, secondType);
+        }
+        // Always return boolean.
+        return SymbolTable.BOOLEAN_TYPE;
     }
 
-    private boolean isBooleanOperatorDefined(TypeSymbol typeSymbol) {
-        boolean isDefined = typeSymbol.isBoolean();
-        if (!isDefined) addError("Invalid type for boolean operator. Requires 'boolean'. Found '%s'.",
-                typeSymbol.name);
-        return isDefined;
+    private TypeSymbol createEqualityOperator(TypeSymbol firstType, TypeSymbol secondType) {
+        String errorMessage = "Equality operator is not defined for %s and %s.";
+        if (!firstType.equals(secondType)) {
+            // Different types are not supported.
+            addError(errorMessage, firstType, secondType);
+        }
+        // Always return boolean.
+        return SymbolTable.BOOLEAN_TYPE;
     }
 
-    private boolean isNumericOperatorDefined(TypeSymbol typeSymbol) {
-        boolean isDefined = typeSymbol.isInteger();
-        if (!isDefined) addError("Invalid type for numeric operator. Requires 'integer'. Found '%s'.",
-                typeSymbol.name);
-        return isDefined;
+    private TypeSymbol createArithmeticOperator(TypeSymbol firstType, TypeSymbol secondType) {
+        String errorMessage = "Arithmetic operator is not defined for %s and %s.";
+        if (firstType.isInteger() && secondType.isInteger()) {
+            // Both are integer. Return integer.
+            return SymbolTable.INTEGER_TYPE;
+        } else if (firstType.isInteger() || secondType.isInteger()) {
+            // One is integer, the other is custom. Return custom.
+            if (firstType.isCustom()) return firstType;
+            if (secondType.isCustom()) return secondType;
+        }
+        addError(errorMessage, firstType, secondType);
+        // Fallback to returning integer.
+        return SymbolTable.INTEGER_TYPE;
     }
 
-    private boolean isSuccPredOperatorDefined(TypeSymbol typeSymbol) {
-        boolean isDefined = typeSymbol.isInteger() || typeSymbol.isChar() || typeSymbol.isCustom();
-        if (!isDefined) addError("Invalid type for succ/pred operations. Found '%s'.", typeSymbol.name);
-        return isDefined;
+    private TypeSymbol isLogicalOperatorDefined(TypeSymbol firstType, TypeSymbol secondType) {
+        String errorMessage = "Logical operator is not defined for types %s and %s.";
+        if (!firstType.isBoolean() || !secondType.isBoolean()) {
+            // Only boolean is supported.
+            addError(errorMessage, firstType, secondType);
+        }
+        // Always return boolean.
+        return SymbolTable.BOOLEAN_TYPE;
+    }
+
+    private TypeSymbol createNegativeOperator(TypeSymbol firstType) {
+        String errorMessage = "Negative operator is not defined for %s.";
+        if (!firstType.isInteger()) {
+            // Only integer is supported.
+            addError(errorMessage, firstType);
+        }
+        // Always return integer.
+        return SymbolTable.INTEGER_TYPE;
+    }
+
+    private TypeSymbol createNotOperator(TypeSymbol firstType) {
+        String errorMessage = "Not operator is not defined for %s.";
+        if (!firstType.isBoolean()) {
+            // Only boolean is supported.
+            addError(errorMessage, firstType);
+        }
+        // Always return boolean.
+        return SymbolTable.BOOLEAN_TYPE;
+    }
+
+    private void createSuccPredOperator(TypeSymbol typeSymbol) {
+        String errorMessage = "Succ/pred operator is not defined for %s.";
+        if (typeSymbol.isBoolean()) {
+            // Boolean is not supported.
+            addError(errorMessage, typeSymbol);
+        }
+    }
+
+    private void createChrOperator(TypeSymbol typeSymbol) {
+        String errorMessage = "Chr operator is not defined for %s.";
+        if (!typeSymbol.isInteger()) {
+            // Only integer is supported.
+            addError(errorMessage, typeSymbol);
+        }
+    }
+
+    private void createOrdOperator(TypeSymbol typeSymbol) {
+        String errorMessage = "Ord operator is not defined for %s.";
+        if (!typeSymbol.isChar()) {
+            // Only char is supported.
+            addError(errorMessage, typeSymbol);
+        }
     }
 
     private boolean isFunctionAssignable(FcnSymbol fcnSymbol, List<TypeSymbol> paramTypes) {
@@ -1002,9 +1094,9 @@ public class SemanticAnalyzer extends BaseVisitor {
     }
 
     private boolean typeMismatch(TypeSymbol firstType, TypeSymbol secondType) {
+        String errorMessage = "Type mismatch. Types are not compatible. Expected %s, found %s.";
         if (firstType.isAssignable(secondType)) return false;
-        addError("Type mismatch. Types are not compatible. Expected " +
-                firstType + ", got " + secondType + ".");
+        addError(errorMessage, firstType, secondType);
         return true;
     }
 
