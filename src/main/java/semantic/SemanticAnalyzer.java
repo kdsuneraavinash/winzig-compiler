@@ -57,16 +57,7 @@ public class SemanticAnalyzer extends BaseVisitor {
         visit(astNode.getChild(1)); // Consts
         visit(astNode.getChild(2)); // Types
         visit(astNode.getChild(3)); // Dclns
-
-        // Go to entry point and skip sub program section.
-        // Otherwise, will enter sub program first since they will be in the top.
-        // The entry point label will be attached to the correct position afterwards.
-        Label entryPointLabel = new Label();
-        addCode(InstructionMnemonic.GOTO, entryPointLabel);
         visit(astNode.getChild(4)); // SubProgs
-
-        // Entry point.
-        attachLabel(entryPointLabel);
         visit(astNode.getChild(5)); // Body
         addCode(InstructionMnemonic.HALT);
     }
@@ -147,6 +138,14 @@ public class SemanticAnalyzer extends BaseVisitor {
 
     @Override
     protected void visitSubprogs(ASTNode astNode) {
+        if (astNode.getSize() == 0) return; // Empty
+
+        // Go to exit of subprogs and skip sub program section.
+        // Otherwise, will enter sub program first since they will be in the top.
+        // The exit point label will be attached to the correct position afterwards.
+        Label subProgsExitLabel = new Label();
+        addCode(InstructionMnemonic.GOTO, subProgsExitLabel);
+
         // Stores the current global top.
         // Inside the functions, all the addresses will be relative to function start position.
         // After the function definitions are over, the global will need to be restored.
@@ -156,6 +155,8 @@ public class SemanticAnalyzer extends BaseVisitor {
             visit(astNode.getChild(i)); // Fcn
         }
         context.top = globalTop;
+
+        attachLabel(subProgsExitLabel);
     }
 
     @Override
