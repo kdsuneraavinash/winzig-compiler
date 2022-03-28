@@ -19,49 +19,28 @@ import semantic.symbols.TypeSymbol;
 import semantic.symbols.VariableSymbol;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 public class SemanticAnalyzer extends BaseVisitor {
     private final TextHighlighter highlighter;
-    private SymbolTable symbolTable;
+    private final SymbolTable symbolTable;
+    private final Map<Label, Integer> labels;
 
-    private Context context;
-    private List<Instruction> code;
+    private final Context context;
+    private final List<Instruction> code;
 
     public SemanticAnalyzer(TextHighlighter highlighter) {
         this.highlighter = highlighter;
-    }
-
-    private void addCode(InstructionMnemonic mnemonic, Object... register) {
-        code.add(new Instruction(mnemonic, register));
-    }
-
-    private void addError(String message, Object... args) {
-        addError(currentNode, message, args);
-    }
-
-    private void attachLabel(Label label, int position) {
-        // Subtracting 1 because position is 1-indexed.
-        int zPosition = position - 1;
-        if (code.size() <= zPosition) {
-            // Add NOP if nothing in the function (?)
-            addCode(InstructionMnemonic.NOP);
-        }
-        code.get(zPosition).attachLabel(label);
-
-    }
-
-    private int getNext() {
-        return code.size() + 1;
-    }
-
-    // ---------------------------------------- Program ----------------------------------------------------------------
-
-    public List<Instruction> generate(ASTNode astNode) {
         this.context = new Context();
         this.symbolTable = new SymbolTable();
         this.code = new ArrayList<>();
+        this.labels = new HashMap<>();
+    }
+
+    public List<Instruction> codeGenerate(ASTNode astNode) {
         visit(astNode);
         return code;
     }
@@ -1112,5 +1091,28 @@ public class SemanticAnalyzer extends BaseVisitor {
     @Override
     public String highlightedSegment(int startOffset, int endOffset) {
         return highlighter.highlightedSegment(startOffset, endOffset);
+    }
+
+    private void addCode(InstructionMnemonic mnemonic, Object... register) {
+        code.add(new Instruction(mnemonic, register));
+    }
+
+    private void addError(String message, Object... args) {
+        addError(currentNode, message, args);
+    }
+
+    private void attachLabel(Label label, int position) {
+        // Subtracting 1 because position is 1-indexed.
+        int zPosition = position - 1;
+        if (code.size() <= zPosition) {
+            // Add NOP if nothing in the function (?)
+            addCode(InstructionMnemonic.NOP);
+        }
+        code.get(zPosition).attachLabel(label);
+
+    }
+
+    private int getNext() {
+        return code.size() + 1;
     }
 }

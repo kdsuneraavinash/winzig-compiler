@@ -50,7 +50,7 @@ public class WinZig implements Callable<Integer> {
         WinZigParser parser = new WinZigParser(lexer);
         SemanticAnalyzer analyzer = new SemanticAnalyzer(charReader);
         ASTNode node = parser.parse();
-        List<Instruction> instructions = analyzer.generate(node);
+        List<Instruction> instructions = analyzer.codeGenerate(node);
 
         if (lexer.hasErrors()) {
             System.err.println("Lexer failed due to errors.");
