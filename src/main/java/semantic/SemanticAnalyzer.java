@@ -269,7 +269,7 @@ public class SemanticAnalyzer extends BaseVisitor {
                 addError("Variable '%s' already defined.", identifier);
                 continue;
             }
-            symbolTable.enterVariableSymbol(identifier, ++context.top, typeSymbol);
+            symbolTable.enterVariableSymbol(identifier, context.top++, typeSymbol);
             context.newVarNames.add(identifier);
         }
     }
@@ -441,7 +441,7 @@ public class SemanticAnalyzer extends BaseVisitor {
         // If there is a previous case variable, we track it. (Can be nested case statements)
         VariableSymbol previousCaseVariableSymbol = context.currentCaseVariableSymbol;
         context.currentCaseVariableSymbol = new VariableSymbol("~generated~",
-                context.exprTypeSymbol, context.top, false);
+                context.exprTypeSymbol, context.top - 1, false);
 
         // If the last node is of kind otherwise, there is an otherwise clause.
         // There will always be at least one node, so no checking is required.

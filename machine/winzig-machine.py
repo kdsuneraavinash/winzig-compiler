@@ -219,14 +219,15 @@ def pop_n_Lf(n):
 
 def str_data():
     if Data_memory:
-        return str([Data_memory.get(i, -1) for i in range(1, max(Data_memory.keys()) + 1)][:STR])
+        return str([Data_memory.get(i, -1) for i in range(max(Data_memory.keys()) + 1)][:STR + 1])
     return ""
 
 
 Data_memory = {}
 Return_Stack = []
 I = 0
-GBR = LBR = STR = 0
+GBR = LBR = 0
+STR = -1
 DEBUG = False
 
 if __name__ == "__main__":
