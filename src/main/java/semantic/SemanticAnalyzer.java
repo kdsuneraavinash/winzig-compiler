@@ -20,6 +20,7 @@ import semantic.symbols.VariableSymbol;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -27,7 +28,7 @@ import java.util.Objects;
 public class SemanticAnalyzer extends BaseVisitor {
     private final TextHighlighter highlighter;
     private final SymbolTable symbolTable;
-    private final Map<Label, Integer> labels;
+    private final Map<Label, Integer> attachmentPositions;
 
     private final Context context;
     private final List<Instruction> code;
@@ -37,11 +38,12 @@ public class SemanticAnalyzer extends BaseVisitor {
         this.context = new Context();
         this.symbolTable = new SymbolTable();
         this.code = new ArrayList<>();
-        this.labels = new HashMap<>();
+        this.attachmentPositions = new HashMap<>();
     }
 
     public List<Instruction> codeGenerate(ASTNode astNode) {
         visit(astNode);
+        attachLabels();
         return code;
     }
 
@@ -64,10 +66,9 @@ public class SemanticAnalyzer extends BaseVisitor {
         visit(astNode.getChild(4)); // SubProgs
 
         // Entry point.
-        int entryPointPosition = getNext();
+        attachLabel(entryPointLabel);
         visit(astNode.getChild(5)); // Body
         addCode(InstructionMnemonic.HALT);
-        attachLabel(entryPointLabel, entryPointPosition);
     }
 
     // ---------------------------------------- Consts -----------------------------------------------------------------
@@ -163,7 +164,8 @@ public class SemanticAnalyzer extends BaseVisitor {
         String returnTypeName = ((IdentifierNode) astNode.getChild(2)).getIdentifierValue(); // Name
         if (doesEndTokenMismatch(functionName, astNode.getChild(7))) return;
 
-        int functionEntryPosition = getNext();
+        Label functionEntryLabel = new Label();
+        attachLabel(functionEntryLabel);
         // Get the return type from the function definition.
         // The return value is required to determine the type of the values of calls.
         TypeSymbol returnTypeSymbol = lookupType(returnTypeName);
@@ -184,7 +186,6 @@ public class SemanticAnalyzer extends BaseVisitor {
         // The entry point label is used to generate the function call instructions.
         // Param types are copied to remove side effects of clearing the array.
         // Even if this is entered while in local scope, functions are always global.
-        Label functionEntryLabel = new Label();
         List<TypeSymbol> paramTypeSymbols = new ArrayList<>(context.paramTypeSymbols);
         context.activeFcnSymbol = symbolTable.enterFcnSymbol(functionName, functionEntryLabel,
                 paramTypeSymbols, returnTypeSymbol);
@@ -198,9 +199,6 @@ public class SemanticAnalyzer extends BaseVisitor {
         addCode(InstructionMnemonic.RTN, 1);
 
         symbolTable.endLocalScope();
-
-        // Attach labels.
-        attachLabel(functionEntryLabel, functionEntryPosition);
     }
 
     @Override
@@ -335,19 +333,16 @@ public class SemanticAnalyzer extends BaseVisitor {
 
         // Then statement.
         // After then, go to the end of statement.
-        int thenEntryPosition = getNext();
+        attachLabel(thenEntryLabel);
         visit(astNode.getChild(1)); // Statement
         addCode(InstructionMnemonic.GOTO, ifExitLabel);
-        attachLabel(thenEntryLabel, thenEntryPosition);
 
         if (elseEntryLabel != null) { // ?
-            int elseStartPosition = getNext();
+            attachLabel(elseEntryLabel);
             visit(astNode.getChild(2)); // Statement
-            attachLabel(elseEntryLabel, elseStartPosition);
         }
-        // With current implementation, the if statement is always followed by a NOP.
-        // The if exit label is attached to the NOP.
-        attachLabel(ifExitLabel, getNext());
+
+        attachLabel(ifExitLabel);
     }
 
     @Override
@@ -356,7 +351,7 @@ public class SemanticAnalyzer extends BaseVisitor {
         Label whileBodyLabel = new Label();
         Label whileExitLabel = new Label();
 
-        int whileConditionPosition = getNext();
+        attachLabel(whileConditionLabel);
         visit(astNode.getChild(0)); // Expression
         if (!context.exprTypeSymbol.isBoolean()) addError("Invalid type for while condition.");
 
@@ -364,17 +359,13 @@ public class SemanticAnalyzer extends BaseVisitor {
         // Top will decrease by one because we pop the condition value.
         addCode(InstructionMnemonic.COND, whileBodyLabel, whileExitLabel);
         context.top--;
-        attachLabel(whileConditionLabel, whileConditionPosition);
 
         // Execute the body and go back to the condition.
-        int whileBodyPosition = getNext();
+        attachLabel(whileBodyLabel);
         visit(astNode.getChild(1)); // Statement
         addCode(InstructionMnemonic.GOTO, whileConditionLabel);
-        attachLabel(whileBodyLabel, whileBodyPosition);
 
-        // With current implementation, the while statement is always followed by a NOP.
-        // The while exit label is attached to the NOP.
-        attachLabel(whileExitLabel, getNext());
+        attachLabel(whileExitLabel);
     }
 
     @Override
@@ -383,11 +374,10 @@ public class SemanticAnalyzer extends BaseVisitor {
         Label repeatExitLabel = new Label();
 
         // Execute the body and go back to the condition.
-        int repeatBodyPosition = getNext();
+        attachLabel(repeatBodyLabel);
         for (int i = 0; i < astNode.getSize() - 1; i++) { // list
             visit(astNode.getChild(i)); // Statement
         }
-        attachLabel(repeatBodyLabel, repeatBodyPosition);
 
         visit(astNode.getChild(astNode.getSize() - 1)); // Expression
         if (!context.exprTypeSymbol.isBoolean()) addError("Invalid type for repeat condition.");
@@ -397,9 +387,7 @@ public class SemanticAnalyzer extends BaseVisitor {
         addCode(InstructionMnemonic.COND, repeatExitLabel, repeatBodyLabel);
         context.top--;
 
-        // With current implementation, the repeat statement is always followed by a NOP.
-        // The repeat exit label is attached to the NOP.
-        attachLabel(repeatExitLabel, getNext());
+        attachLabel(repeatExitLabel);
     }
 
     @Override
@@ -413,40 +401,35 @@ public class SemanticAnalyzer extends BaseVisitor {
         Label forExitLabel = new Label();
 
         // Second statement is the condition.
-        int forConditionPosition = getNext();
+        attachLabel(forConditionLabel);
         visit(astNode.getChild(1)); // ForExp
         if (!context.exprTypeSymbol.isBoolean()) addError("Invalid type for loop condition.");
 
         // If the condition is true, go to the body.
         // Otherwise, go to the end of for.
         addCode(InstructionMnemonic.COND, forBodyLabel, forExitLabel);
-        attachLabel(forConditionLabel, forConditionPosition);
         context.top--;
 
         // Third statement is the update.
         // But first we run the body, then we run the update.
-        int forBodyPosition = getNext();
+        attachLabel(forBodyLabel);
         visit(astNode.getChild(3)); // Statement
         visit(astNode.getChild(2)); // ForStat
         addCode(InstructionMnemonic.GOTO, forConditionLabel);
-        attachLabel(forBodyLabel, forBodyPosition);
 
-        // With current implementation, the for statement is always followed by a NOP.
-        // The for exit label is attached to the NOP.
-        attachLabel(forExitLabel, getNext());
+        attachLabel(forExitLabel);
     }
 
     @Override
     protected void visitLoopStatement(ASTNode astNode) {
         Label loopStartLabel = new Label();
-        int loopStartPosition = getNext();
+        attachLabel(loopStartLabel);
 
         // Execute the body and go back to the condition.
         for (int i = 0; i < astNode.getSize(); i++) { // list
             visit(astNode.getChild(i)); // Statement
         }
         addCode(InstructionMnemonic.GOTO, loopStartLabel);
-        attachLabel(loopStartLabel, loopStartPosition);
     }
 
     @Override
@@ -483,23 +466,20 @@ public class SemanticAnalyzer extends BaseVisitor {
         // So, only one block will execute. (The first one that matches)
         // Otherwise clause if non matches.
         for (int i = 0; i < nCaseClauses; i++) { // Caseclauses +
-            int caseClausePosition = getNext();
+            attachLabel(caseClausesLabels.get(i));
             context.nextCaseLabel = caseClausesLabels.get(i + 1);
             visit(astNode.getChild(i + 1)); // Caseclause
             addCode(InstructionMnemonic.GOTO, caseClausesEndLabel);
-            attachLabel(caseClausesLabels.get(i), caseClausePosition);
         }
 
         // Visit otherwise clause.
-        int caseOtherwisePosition = getNext();
+        attachLabel(caseOtherwiseLabel);
         visit(astNode.getChild(astNode.getSize() - 1)); // OtherwiseClause
-        attachLabel(caseOtherwiseLabel, caseOtherwisePosition);
 
         // Restore previous case variable and pop the case expression value.
-        int caseClausesEndPosition = getNext();
+        attachLabel(caseClausesEndLabel);
         addCode(InstructionMnemonic.POP, 1);
         context.top--;
-        attachLabel(caseClausesEndLabel, caseClausesEndPosition);
         context.currentCaseVariableSymbol = previousCaseVariableSymbol;
     }
 
@@ -606,9 +586,8 @@ public class SemanticAnalyzer extends BaseVisitor {
         addCode(InstructionMnemonic.COND, caseBodyLabel, nextCaseLabel);
         context.top--;
         // The code of body.
-        int caseBodyPosition = getNext();
+        attachLabel(caseBodyLabel);
         visit(astNode.getChild(astNode.getSize() - 1)); // Statement
-        attachLabel(caseBodyLabel, caseBodyPosition);
     }
 
     @Override
@@ -1101,15 +1080,26 @@ public class SemanticAnalyzer extends BaseVisitor {
         addError(currentNode, message, args);
     }
 
-    private void attachLabel(Label label, int position) {
-        // Subtracting 1 because position is 1-indexed.
-        int zPosition = position - 1;
-        if (code.size() <= zPosition) {
-            // Add NOP if nothing in the function (?)
-            addCode(InstructionMnemonic.NOP);
-        }
-        code.get(zPosition).attachLabel(label);
+    private void attachLabels() {
+        Iterator<Map.Entry<Label, Integer>> iter = attachmentPositions.entrySet().iterator();
+        while (iter.hasNext()) {
+            Map.Entry<Label, Integer> entry = iter.next();
+            Label label = entry.getKey();
+            int position = entry.getValue();
 
+            // Subtracting 1 because position is 1-indexed.
+            int zPosition = position - 1;
+            if (code.size() <= zPosition) {
+                // Add NOP if nothing in the function (?)
+                addCode(InstructionMnemonic.NOP);
+            }
+            code.get(zPosition).attachLabel(label);
+            iter.remove();
+        }
+    }
+
+    private void attachLabel(Label label) {
+        attachmentPositions.put(label, getNext());
     }
 
     private int getNext() {
