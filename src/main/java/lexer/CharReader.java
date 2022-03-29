@@ -1,6 +1,7 @@
 package lexer;
 
 
+import diagnostics.Highlightable;
 import diagnostics.TextHighlighter;
 
 import java.util.Arrays;
@@ -66,7 +67,13 @@ public class CharReader implements TextHighlighter {
         return offset;
     }
 
-    public String highlightedSegment(int startOffset, int endOffset) {
+    public String highlightedSegment(Highlightable highlightable) {
+        int startOffset = highlightable.getStartOffset();
+        int endOffset = highlightable.getEndOffset();
+        if (startOffset == -1 || endOffset == -1) {
+            return "";
+        }
+
         int lineNumber = 1;
         for (int i = 0; i < charBufferLength && i < startOffset; i++) {
             if (charBuffer[i] == '\n') lineNumber++;

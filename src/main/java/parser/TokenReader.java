@@ -1,8 +1,9 @@
 package parser;
 
 
-import lexer.AbstractLexer;
+import diagnostics.Highlightable;
 import diagnostics.TextHighlighter;
+import lexer.AbstractLexer;
 import lexer.tokens.Token;
 
 public class TokenReader implements TextHighlighter {
@@ -30,7 +31,7 @@ public class TokenReader implements TextHighlighter {
     }
 
     @Override
-    public String highlightedSegment(int startOffset, int endOffset) {
-        return lexer.highlightedSegment(startOffset, endOffset);
+    public String highlightedSegment(Highlightable highlightable) {
+        return lexer.highlightedSegment(highlightable);
     }
 }

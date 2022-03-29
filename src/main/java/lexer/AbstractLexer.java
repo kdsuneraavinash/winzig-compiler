@@ -1,6 +1,7 @@
 package lexer;
 
 import diagnostics.DiagnosticCollector;
+import diagnostics.Highlightable;
 import lexer.tokens.Minutiae;
 import lexer.tokens.Token;
 
@@ -45,7 +46,7 @@ public abstract class AbstractLexer extends DiagnosticCollector {
     }
 
     @Override
-    public String highlightedSegment(int startOffset, int endOffset) {
-        return charReader.highlightedSegment(startOffset, endOffset);
+    public String highlightedSegment(Highlightable highlightable) {
+        return charReader.highlightedSegment(highlightable);
     }
 }

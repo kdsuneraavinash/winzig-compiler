@@ -1,6 +1,7 @@
 package parser;
 
 import diagnostics.DiagnosticCollector;
+import diagnostics.Highlightable;
 import lexer.AbstractLexer;
 import lexer.tokens.Token;
 import lexer.tokens.TokenKind;
@@ -81,7 +82,7 @@ public abstract class AbstractParser extends DiagnosticCollector {
     }
 
     @Override
-    public String highlightedSegment(int startOffset, int endOffset) {
-        return tokenReader.highlightedSegment(startOffset, endOffset);
+    public String highlightedSegment(Highlightable highlightable) {
+        return tokenReader.highlightedSegment(highlightable);
     }
 }

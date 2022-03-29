@@ -13,7 +13,7 @@ public abstract class DiagnosticCollector implements TextHighlighter {
 
     public void addError(Highlightable highlightable, String message, Object... args) {
         String errorMessage = String.format(message, args);
-        String highlighted = highlightable.highlighted(this);
+        String highlighted = highlightedSegment(highlightable);
         if (highlighted.isEmpty()) {
             diagnostics.add(errorMessage);
         } else {

@@ -1,5 +1,7 @@
 package diagnostics;
 
 public interface Highlightable {
-    String highlighted(TextHighlighter highlighter);
+    int getStartOffset();
+
+    int getEndOffset();
 }

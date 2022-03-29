@@ -1,7 +1,6 @@
 package lexer.tokens;
 
 import diagnostics.Highlightable;
-import diagnostics.TextHighlighter;
 
 public class Minutiae implements Highlightable {
     private final TokenKind kind;
@@ -23,7 +22,12 @@ public class Minutiae implements Highlightable {
     }
 
     @Override
-    public String highlighted(TextHighlighter highlighter) {
-        return highlighter.highlightedSegment(startOffset, endOffset);
+    public int getStartOffset() {
+        return startOffset;
+    }
+
+    @Override
+    public int getEndOffset() {
+        return endOffset;
     }
 }

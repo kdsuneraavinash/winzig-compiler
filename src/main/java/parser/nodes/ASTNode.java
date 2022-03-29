@@ -1,7 +1,5 @@
 package parser.nodes;
 
-import diagnostics.TextHighlighter;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -40,10 +38,18 @@ public class ASTNode implements Node {
     }
 
     @Override
-    public String highlighted(TextHighlighter highlighter) {
-        if (children.size() > 0) {
-            return children.get(0).highlighted(highlighter);
+    public int getStartOffset() {
+        if (getSize() > 0) {
+            return children.get(0).getStartOffset();
         }
-        return "";
+        return -1;
+    }
+
+    @Override
+    public int getEndOffset() {
+        if (getSize() > 0) {
+            return children.get(getSize() - 1).getEndOffset();
+        }
+        return -1;
     }
 }

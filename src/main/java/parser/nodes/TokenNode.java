@@ -1,6 +1,5 @@
 package parser.nodes;
 
-import diagnostics.TextHighlighter;
 import lexer.tokens.Token;
 import lexer.tokens.TokenKind;
 
@@ -33,7 +32,12 @@ public class TokenNode implements Node {
     }
 
     @Override
-    public String highlighted(TextHighlighter highlighter) {
-        return token.highlighted(highlighter);
+    public int getStartOffset() {
+        return token.getStartOffset();
+    }
+
+    @Override
+    public int getEndOffset() {
+        return token.getEndOffset();
     }
 }

@@ -1,7 +1,6 @@
 package lexer.tokens;
 
 import diagnostics.Highlightable;
-import diagnostics.TextHighlighter;
 
 import java.util.List;
 
@@ -36,7 +35,12 @@ public class Token implements Highlightable {
     }
 
     @Override
-    public String highlighted(TextHighlighter highlighter) {
-        return highlighter.highlightedSegment(startOffset, endOffset);
+    public int getStartOffset() {
+        return startOffset;
+    }
+
+    @Override
+    public int getEndOffset() {
+        return endOffset;
     }
 }

@@ -1,0 +1,5 @@
+program TestPrimes:
+var x: integer; y: boolean; k: blah;
+begin
+    y := (x / 3) + y;
+end TestPrimes.

@@ -1,5 +1,6 @@
 package semantic;
 
+import diagnostics.Highlightable;
 import diagnostics.TextHighlighter;
 import lexer.tokens.TokenKind;
 import parser.nodes.ASTNode;
@@ -1161,8 +1162,8 @@ public class SemanticAnalyzer extends BaseVisitor {
     }
 
     @Override
-    public String highlightedSegment(int startOffset, int endOffset) {
-        return highlighter.highlightedSegment(startOffset, endOffset);
+    public String highlightedSegment(Highlightable highlightable) {
+        return highlighter.highlightedSegment(highlightable);
     }
 
     private void addCode(InstructionMnemonic mnemonic, Object... register) {

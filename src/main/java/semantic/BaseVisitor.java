@@ -13,174 +13,176 @@ public abstract class BaseVisitor extends DiagnosticCollector {
     }
 
     public void visit(Node node) {
+        Node currentNode = this.currentNode;
         this.currentNode = node;
         if (node instanceof IdentifierNode) {
             visitIdentifier((IdentifierNode) node);
-            return;
         } else if (node instanceof ASTNode) {
             ASTNode astNode = (ASTNode) node;
             switch (astNode.getKind()) {
                 case PROGRAM:
                     visitProgram(astNode);
-                    return;
+                    break;
                 case CONSTS:
                     visitConsts(astNode);
-                    return;
+                    break;
                 case CONST:
                     visitConst(astNode);
-                    return;
+                    break;
                 case TYPES:
                     visitTypes(astNode);
-                    return;
+                    break;
                 case TYPE:
                     visitType(astNode);
-                    return;
+                    break;
                 case LIT:
                     visitLit(astNode);
-                    return;
+                    break;
                 case SUBPROGS:
                     visitSubprogs(astNode);
-                    return;
+                    break;
                 case FCN:
                     visitFcn(astNode);
-                    return;
+                    break;
                 case PARAMS:
                     visitParams(astNode);
-                    return;
+                    break;
                 case DCLNS:
                     visitDclns(astNode);
-                    return;
+                    break;
                 case VAR:
                     visitVar(astNode);
-                    return;
+                    break;
                 case BLOCK:
                     visitBlock(astNode);
-                    return;
+                    break;
                 case OUTPUT_STATEMENT:
                     visitOutputStatement(astNode);
-                    return;
+                    break;
                 case IF_STATEMENT:
                     visitIfStatement(astNode);
-                    return;
+                    break;
                 case WHILE_STATEMENT:
                     visitWhileStatement(astNode);
-                    return;
+                    break;
                 case REPEAT_STATEMENT:
                     visitRepeatStatement(astNode);
-                    return;
+                    break;
                 case FOR_STATEMENT:
                     visitForStatement(astNode);
-                    return;
+                    break;
                 case LOOP_STATEMENT:
                     visitLoopStatement(astNode);
-                    return;
+                    break;
                 case CASE_STATEMENT:
                     visitCaseStatement(astNode);
-                    return;
+                    break;
                 case READ_STATEMENT:
                     visitReadStatement(astNode);
-                    return;
+                    break;
                 case EXIT_STATEMENT:
                     visitExitStatement(astNode);
-                    return;
+                    break;
                 case RETURN_STATEMENT:
                     visitReturnStatement(astNode);
-                    return;
+                    break;
                 case NULL_STATEMENT:
                     visitNullStatement(astNode);
-                    return;
+                    break;
                 case INTEGER_OUT_EXP:
                     visitIntegerOutExp(astNode);
-                    return;
+                    break;
                 case STRING_OUT_EXP:
                     visitStringOutExp(astNode);
-                    return;
+                    break;
                 case CASE_CLAUSE:
                     visitCaseClause(astNode);
-                    return;
+                    break;
                 case DOUBLE_DOTS_CLAUSE:
                     visitDoubleDotsClause(astNode);
-                    return;
+                    break;
                 case OTHERWISE_CLAUSE:
                     visitOtherwiseClause(astNode);
-                    return;
+                    break;
                 case ASSIGNMENT_STATEMENT:
                     visitAssignmentStatement(astNode);
-                    return;
+                    break;
                 case SWAP_STATEMENT:
                     visitSwapStatement(astNode);
-                    return;
+                    break;
                 case TRUE:
                     visitTrue(astNode);
-                    return;
+                    break;
                 case LT_EQUAL_EXPRESSION:
                     visitLtEqualExpression(astNode);
-                    return;
+                    break;
                 case LT_EXPRESSION:
                     visitLtExpression(astNode);
-                    return;
+                    break;
                 case GT_EQUAL_EXPRESSION:
                     visitGtEqualExpression(astNode);
-                    return;
+                    break;
                 case GT_EXPRESSION:
                     visitGtExpression(astNode);
-                    return;
+                    break;
                 case EQUALS_EXPRESSION:
                     visitEqualsExpression(astNode);
-                    return;
+                    break;
                 case NOT_EQUALS_EXPRESSION:
                     visitNotEqualsExpression(astNode);
-                    return;
+                    break;
                 case ADD_EXPRESSION:
                     visitAddExpression(astNode);
-                    return;
+                    break;
                 case SUBTRACT_EXPRESSION:
                     visitSubtractExpression(astNode);
-                    return;
+                    break;
                 case OR_EXPRESSION:
                     visitOrExpression(astNode);
-                    return;
+                    break;
                 case MULTIPLY_EXPRESSION:
                     visitMultiplyExpression(astNode);
-                    return;
+                    break;
                 case DIVIDE_EXPRESSION:
                     visitDivideExpression(astNode);
-                    return;
+                    break;
                 case AND_EXPRESSION:
                     visitAndExpression(astNode);
-                    return;
+                    break;
                 case MOD_EXPRESSION:
                     visitModExpression(astNode);
-                    return;
+                    break;
                 case NEGATIVE_EXPRESSION:
                     visitNegativeExpression(astNode);
-                    return;
+                    break;
                 case NOT_EXPRESSION:
                     visitNotExpression(astNode);
-                    return;
+                    break;
                 case EOF_EXPRESSION:
                     visitEofExpression(astNode);
-                    return;
+                    break;
                 case CALL_EXPRESSION:
                     visitCallExpression(astNode);
-                    return;
+                    break;
                 case SUCC_EXPRESSION:
                     visitSuccExpression(astNode);
-                    return;
+                    break;
                 case PRED_EXPRESSION:
                     visitPredExpression(astNode);
-                    return;
+                    break;
                 case CHR_EXPRESSION:
                     visitChrExpression(astNode);
-                    return;
+                    break;
                 case ORD_EXPRESSION:
                     visitOrdExpression(astNode);
-                    return;
+                    break;
                 default:
                     throw new IllegalArgumentException("Unknown AST node type: " + astNode.getKind());
             }
+        } else {
+            throw new IllegalStateException("Unknown node type: " + node.toString());
         }
-        throw new IllegalStateException("Unknown node type: " + node.toString());
+        this.currentNode = currentNode;
     }
 
     protected abstract void visitProgram(ASTNode astNode);
